@@ -1,5 +1,5 @@
 Flask==3.0.0
 PuLP==2.8
-satisfactory-save==1.4.0
+satisfactory-save==0.9.0
 graphviz==0.20.1
 watchdog==4.0.0
