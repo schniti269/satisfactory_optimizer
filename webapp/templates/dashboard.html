@@ -1,0 +1,3106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Factory Janitor - {{ factory.session_name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+        }
+
+        /* -- Header -- */
+        .header {
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .header h1 {
+            color: #FFD700;
+            font-size: 20px;
+            white-space: nowrap;
+        }
+
+        .header .session {
+            color: #8b949e;
+            font-size: 14px;
+        }
+
+        .header .actions {
+            margin-left: auto;
+        }
+
+        .header a {
+            color: #58a6ff;
+            text-decoration: none;
+            font-size: 13px;
+            margin-left: 16px;
+        }
+
+        .header a:hover {
+            text-decoration: underline;
+        }
+
+        /* -- Stats Cards -- */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            padding: 16px 24px;
+        }
+
+        .stat-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 14px;
+            text-align: center;
+        }
+
+        .stat-card .value {
+            font-size: 26px;
+            font-weight: 700;
+            color: #FFD700;
+        }
+
+        .stat-card .label {
+            font-size: 11px;
+            color: #8b949e;
+            margin-top: 4px;
+        }
+
+        .stat-card.error .value {
+            color: #f85149;
+        }
+
+        .stat-card.warning .value {
+            color: #d29922;
+        }
+
+        .stat-card.good .value {
+            color: #3fb950;
+        }
+
+        /* -- Tab Bar -- */
+        .tab-bar {
+            display: flex;
+            gap: 2px;
+            padding: 0 24px;
+            background: #0d1117;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            color: #8b949e;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+        }
+
+        .tab-btn:hover {
+            color: #c9d1d9;
+        }
+
+        .tab-btn.active {
+            color: #FFD700;
+            border-bottom-color: #FFD700;
+        }
+
+        .tab-btn .badge {
+            background: #30363d;
+            color: #8b949e;
+            border-radius: 10px;
+            padding: 1px 7px;
+            font-size: 10px;
+            margin-left: 6px;
+        }
+
+        .tab-btn.active .badge {
+            background: #FFD70033;
+            color: #FFD700;
+        }
+
+        /* -- Tab Panels -- */
+        .tab-panel {
+            display: none;
+            padding: 16px 24px;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* -- Panels -- */
+        .panel {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .panel-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .panel-header h2 {
+            font-size: 14px;
+            color: #c9d1d9;
+        }
+
+        .panel-header .badge {
+            background: #30363d;
+            color: #8b949e;
+            border-radius: 10px;
+            padding: 2px 8px;
+            font-size: 11px;
+        }
+
+        .panel-header .filter-btns {
+            margin-left: auto;
+            display: flex;
+            gap: 4px;
+        }
+
+        .filter-btn {
+            background: #21262d;
+            border: 1px solid #30363d;
+            color: #8b949e;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .filter-btn:hover,
+        .filter-btn.active {
+            background: #30363d;
+            color: #c9d1d9;
+            border-color: #484f58;
+        }
+
+        .panel-body {
+            max-height: 550px;
+            overflow-y: auto;
+        }
+
+        /* -- Grid layouts -- */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 1200px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* -- Issues List -- */
+        .issue-item {
+            padding: 10px 16px;
+            border-bottom: 1px solid #21262d;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+
+        .issue-item:hover {
+            background: #1c2128;
+        }
+
+        .issue-icon {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .issue-icon.error {
+            background: #f8514922;
+            color: #f85149;
+        }
+
+        .issue-icon.warning {
+            background: #d2992222;
+            color: #d29922;
+        }
+
+        .issue-icon.info {
+            background: #58a6ff22;
+            color: #58a6ff;
+        }
+
+        .issue-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .issue-title {
+            color: #c9d1d9;
+            font-weight: 600;
+        }
+
+        .issue-desc {
+            color: #8b949e;
+            font-size: 12px;
+            margin-top: 2px;
+            line-height: 1.4;
+        }
+
+        .issue-meta {
+            color: #484f58;
+            font-size: 11px;
+            margin-top: 4px;
+        }
+
+        .issue-tag {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            margin-right: 4px;
+        }
+
+        .issue-tag.error {
+            background: #f8514933;
+            color: #f85149;
+        }
+
+        .issue-tag.warning {
+            background: #d2992233;
+            color: #d29922;
+        }
+
+        .issue-tag.info {
+            background: #58a6ff33;
+            color: #58a6ff;
+        }
+
+        .issue-tag.cat {
+            background: #30363d;
+            color: #8b949e;
+        }
+
+        /* -- Building Table -- */
+        .bld-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .bld-table th {
+            text-align: left;
+            padding: 8px 12px;
+            color: #8b949e;
+            border-bottom: 1px solid #30363d;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            background: #161b22;
+        }
+
+        .bld-table td {
+            padding: 6px 12px;
+            border-bottom: 1px solid #21262d;
+        }
+
+        .bld-table tr:hover td {
+            background: #1c2128;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-dot.producing {
+            background: #3fb950;
+        }
+
+        .status-dot.idle {
+            background: #f85149;
+        }
+
+        .pbar {
+            width: 60px;
+            height: 6px;
+            background: #21262d;
+            border-radius: 3px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .pbar-fill {
+            height: 100%;
+            border-radius: 3px;
+        }
+
+        .pbar-fill.good {
+            background: #3fb950;
+        }
+
+        .pbar-fill.mid {
+            background: #d29922;
+        }
+
+        .pbar-fill.low {
+            background: #f85149;
+        }
+
+        /* -- Belt Bottleneck Table -- */
+        .bottleneck-row {
+            display: flex;
+            gap: 12px;
+            padding: 8px 16px;
+            border-bottom: 1px solid #21262d;
+            font-size: 12px;
+            align-items: center;
+        }
+
+        .bottleneck-row:hover {
+            background: #1c2128;
+        }
+
+        .belt-tier {
+            color: #FFD700;
+            font-weight: 600;
+            min-width: 80px;
+        }
+
+        .flow-bar-bg {
+            flex: 0 0 120px;
+            height: 8px;
+            background: #21262d;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .flow-bar {
+            height: 100%;
+            border-radius: 4px;
+        }
+
+        .flow-bar.crit {
+            background: #f85149;
+        }
+
+        .flow-bar.warn {
+            background: #d29922;
+        }
+
+        .flow-bar.ok {
+            background: #3fb950;
+        }
+
+        .bottleneck-info {
+            flex: 1;
+            color: #8b949e;
+            min-width: 0;
+        }
+
+        .bottleneck-rate {
+            color: #c9d1d9;
+            font-weight: 500;
+            min-width: 100px;
+            text-align: right;
+        }
+
+        /* -- Recipe Breakdown -- */
+        .recipe-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 16px;
+            font-size: 12px;
+        }
+
+        .recipe-bar .name {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .recipe-bar .count {
+            color: #FFD700;
+            font-weight: 600;
+            width: 35px;
+            text-align: right;
+        }
+
+        .recipe-bar .bar {
+            flex: 0 0 120px;
+            height: 6px;
+            background: #21262d;
+            border-radius: 3px;
+        }
+
+        .recipe-bar .bar-fill {
+            height: 100%;
+            background: #58a6ff;
+            border-radius: 3px;
+        }
+
+        /* -- Category summary -- */
+        .cat-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 12px 16px;
+        }
+
+        .cat-chip {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .cat-chip .cat-count {
+            color: #FFD700;
+            font-weight: 700;
+        }
+
+        .cat-chip.error {
+            border-color: #f8514944;
+        }
+
+        .cat-chip.warning {
+            border-color: #d2992244;
+        }
+
+        .cat-chip.info {
+            border-color: #58a6ff44;
+        }
+
+        /* -- Map toggles -- */
+        .map-toggle {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: #8b949e;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .map-toggle input {
+            display: none;
+        }
+
+        .map-toggle .toggle-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            border: 1px solid #484f58;
+            display: inline-block;
+        }
+
+        .map-toggle input:checked+.toggle-dot {
+            border-color: #c9d1d9;
+            box-shadow: 0 0 4px rgba(255, 255, 255, 0.2);
+        }
+
+        /* -- Trace Controls -- */
+        .trace-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #161b22ee;
+            border: 1px solid #39c5cf55;
+            border-radius: 10px;
+            padding: 12px 20px;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 20px rgba(57, 197, 207, 0.15);
+            z-index: 100;
+        }
+
+        .trace-btn {
+            background: #21262d;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+            padding: 5px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .trace-btn:hover {
+            background: #30363d;
+            border-color: #39c5cf;
+        }
+
+        /* -- Trace Info Panel (right side of map) -- */
+        .trace-panel {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 320px;
+            max-height: calc(100% - 80px);
+            overflow-y: auto;
+            background: #161b22ee;
+            border: 1px solid #39c5cf55;
+            border-radius: 10px;
+            padding: 0;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(57, 197, 207, 0.15);
+            font-size: 12px;
+        }
+
+        .trace-panel-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .trace-panel-header h3 {
+            font-size: 13px;
+            color: #39c5cf;
+            flex: 1;
+        }
+
+        .trace-node {
+            padding: 8px 16px;
+            border-bottom: 1px solid #1c2128;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+
+        .trace-node:hover {
+            background: #1c2128;
+        }
+
+        .trace-node.origin {
+            background: #39c5cf11;
+            border-left: 3px solid #39c5cf;
+        }
+
+        .trace-node.upstream {
+            border-left: 3px solid #58a6ff;
+        }
+
+        .trace-node.downstream {
+            border-left: 3px solid #d29922;
+        }
+
+        .trace-node .tn-name {
+            font-weight: 600;
+            color: #c9d1d9;
+        }
+
+        .trace-node .tn-recipe {
+            color: #8b949e;
+            font-size: 11px;
+        }
+
+        .trace-node .tn-flow {
+            display: flex;
+            gap: 12px;
+            margin-top: 4px;
+            font-size: 11px;
+        }
+
+        .trace-node .tn-flow span {
+            color: #8b949e;
+        }
+
+        .trace-node .tn-flow .val {
+            color: #c9d1d9;
+            font-weight: 500;
+        }
+
+        .trace-node .tn-issue {
+            margin-top: 3px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        /* -- Feedback Form -- */
+        .feedback-section {
+            border-top: 1px solid #30363d;
+            padding: 12px 16px;
+        }
+
+        .feedback-section h4 {
+            font-size: 12px;
+            color: #8b949e;
+            margin-bottom: 8px;
+        }
+
+        .fb-rating-btns {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .fb-rating-btn {
+            flex: 1;
+            padding: 6px 4px;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            background: #21262d;
+            color: #8b949e;
+            font-size: 11px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s;
+        }
+
+        .fb-rating-btn:hover { border-color: #484f58; color: #c9d1d9; }
+        .fb-rating-btn.selected.correct { background: #3fb95022; border-color: #3fb950; color: #3fb950; }
+        .fb-rating-btn.selected.wrong { background: #f8514922; border-color: #f85149; color: #f85149; }
+        .fb-rating-btn.selected.partial { background: #d2992222; border-color: #d29922; color: #d29922; }
+        .fb-rating-btn.selected.unsure { background: #58a6ff22; border-color: #58a6ff; color: #58a6ff; }
+
+        .fb-input {
+            width: 100%;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            color: #c9d1d9;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-family: inherit;
+            margin-bottom: 6px;
+            resize: vertical;
+        }
+
+        .fb-input:focus { outline: none; border-color: #58a6ff; }
+
+        .fb-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .fb-tag {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            cursor: pointer;
+            border: 1px solid #30363d;
+            background: #21262d;
+            color: #8b949e;
+            transition: all 0.1s;
+        }
+
+        .fb-tag:hover { border-color: #484f58; }
+        .fb-tag.selected { background: #58a6ff22; border-color: #58a6ff; color: #58a6ff; }
+
+        .fb-submit {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            background: #238636;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .fb-submit:hover { background: #2ea043; }
+        .fb-submit:disabled { background: #21262d; color: #484f58; cursor: default; }
+
+        .fb-existing {
+            padding: 8px 16px;
+            border-top: 1px solid #30363d;
+        }
+
+        .fb-entry {
+            padding: 6px 0;
+            border-bottom: 1px solid #1c2128;
+            font-size: 11px;
+        }
+
+        .fb-entry:last-child { border-bottom: none; }
+
+        .fb-entry .fb-meta {
+            color: #484f58;
+            font-size: 10px;
+        }
+
+        /* -- Ticket Tab -- */
+        .ticket-status {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        /* -- Feedback Tab -- */
+        .fb-stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        /* -- Scrollbar -- */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0d1117;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #30363d;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #484f58;
+        }
+
+        /* -- Ledger Table -- */
+        .ledger-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .ledger-table th {
+            background: #0d1117;
+            color: #8b949e;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid #30363d;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .ledger-table th.num { text-align: right; }
+        .ledger-table td { padding: 6px 10px; border-bottom: 1px solid #1c2128; }
+        .ledger-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+        .ledger-table tr:hover { background: #1c2128; }
+        .ledger-status { padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; }
+        .ledger-status.deficit { background: #f8514922; color: #f85149; }
+        .ledger-status.surplus { background: #d2992222; color: #d29922; }
+        .ledger-status.balanced { background: #3fb95022; color: #3fb950; }
+        .ledger-status.imported { background: #58a6ff22; color: #58a6ff; }
+        .ledger-status.unused { background: #30363d; color: #484f58; }
+
+        /* -- Lasso Mode -- */
+        .lasso-toolbar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            padding: 4px 12px;
+            font-size: 11px;
+            background: #161b22;
+            border-top: 1px solid #30363d;
+        }
+        .lasso-btn {
+            padding: 4px 10px;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            background: #21262d;
+            color: #8b949e;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .lasso-btn:hover { background: #30363d; color: #c9d1d9; }
+        .lasso-btn.active { background: #a371f722; border-color: #a371f7; color: #a371f7; }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>Factory Janitor</h1>
+        <span class="session">{{ factory.session_name }} &mdash; {{ "%.0f"|format(factory.play_hours) }}h played</span>
+        {% if graph_stats %}
+        <span class="session" style="color: #3fb950;">{{ graph_stats.recipes_matched }} recipes matched | {{
+            graph_stats.total_edges }} directed edges</span>
+        {% endif %}
+        <div class="actions">
+            <a href="/reset">Upload New Save</a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    {% set error_count = issues|selectattr('severity', 'equalto', 'error')|list|length %}
+    {% set warn_count = issues|selectattr('severity', 'equalto', 'warning')|list|length %}
+    {% set info_count = issues|selectattr('severity', 'equalto', 'info')|list|length %}
+    {% set bottleneck_issues = issues|selectattr('category', 'equalto', 'Belt Bottleneck')|list %}
+    {% set starvation_issues = issues|selectattr('category', 'equalto', 'Input Starvation')|list %}
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="value">{{ factory.stats.buildings }}</div>
+            <div class="label">Total Buildings</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">{{ factory.stats.by_category.get('production', 0) }}</div>
+            <div class="label">Production Machines</div>
+        </div>
+        <div class="stat-card good">
+            <div class="value">{{ factory.stats.production_producing }}</div>
+            <div class="label">Producing</div>
+        </div>
+        <div class="stat-card error">
+            <div class="value">{{ error_count }}</div>
+            <div class="label">Errors</div>
+        </div>
+        <div class="stat-card warning">
+            <div class="value">{{ warn_count }}</div>
+            <div class="label">Warnings</div>
+        </div>
+        <div class="stat-card{% if bottleneck_issues %} error{% endif %}">
+            <div class="value">{{ bottleneck_issues|length }}</div>
+            <div class="label">Belt Bottlenecks</div>
+        </div>
+        <div class="stat-card{% if starvation_issues %} error{% endif %}">
+            <div class="value">{{ starvation_issues|length }}</div>
+            <div class="label">Input Starved</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">{{ factory.stats.belts }}</div>
+            <div class="label">Belts &amp; Pipes</div>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('supply', this)">
+            Supply Chain<span class="badge">{{ starvation_issues|length + bottleneck_issues|length }}</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('issues', this)">
+            All Issues<span class="badge">{{ issues|length }}</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('buildings', this)">
+            Buildings<span class="badge">{{ factory.stats.by_category.get('production', 0) }}</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('overview', this)">
+            Overview
+        </button>
+        <button class="tab-btn" onclick="switchTab('map', this); initMap();">
+            Factory Map<span class="badge">{{ factory.stats.buildings }}</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('feedback', this); loadFeedback();">
+            Feedback<span class="badge" id="feedbackCount">0</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('tickets', this); loadTickets();">
+            Tickets<span class="badge" id="ticketCount">0</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('ledger', this); loadLedger();">
+            Ledger
+        </button>
+    </div>
+
+    <!-- ═══ TAB 1: Supply Chain Analysis ═══ -->
+    <div class="tab-panel active" id="tab-supply">
+        <!-- Issue category summary -->
+        <div class="cat-summary">
+            {% set cats = {} %}
+            {% for issue in issues %}
+            {% if cats.update({issue.category: cats.get(issue.category, 0) + 1}) %}{% endif %}
+            {% endfor %}
+            {% for cat, count in cats.items()|sort(attribute='1', reverse=True) %}
+            <div
+                class="cat-chip {% if cat in ('Input Starvation', 'No Input', 'Belt Bottleneck', 'No Recipe') %}error{% elif cat in ('Idle Machine', 'Dead End', 'Clock Too High', 'Output Backup', 'Splitter Overload', 'Merger Overload') %}warning{% else %}info{% endif %}">
+                <span class="cat-count">{{ count }}</span>
+                {{ cat }}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="grid-2">
+            <!-- Belt Bottlenecks & Flow Issues -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Belt Bottlenecks &amp; Flow Issues</h2>
+                    <span class="badge">{{ bottleneck_issues|length + (issues|selectattr('category', 'equalto', 'Output
+                        Backup')|list|length) + (issues|selectattr('category', 'equalto', 'Splitter
+                        Overload')|list|length) + (issues|selectattr('category', 'equalto', 'Merger
+                        Overload')|list|length) }}</span>
+                </div>
+                <div class="panel-body">
+                    {% for issue in issues if issue.category in ('Belt Bottleneck', 'Output Backup', 'Splitter
+                    Overload', 'Merger Overload') %}
+                    <div class="issue-item" data-severity="{{ issue.severity }}" onclick="traceIssue('{{ issue.building_id|e }}')">
+                        <div class="issue-icon {{ issue.severity }}">!</div>
+                        <div class="issue-content">
+                            <div class="issue-title">{{ issue.title }}</div>
+                            <div class="issue-desc">{{ issue.description }}</div>
+                            {% if issue.flow_rate is defined and issue.max_rate is defined %}
+                            <div style="margin-top: 6px;">
+                                <div class="flow-bar-bg" style="width: 200px; display: inline-block;">
+                                    <div class="flow-bar {% if issue.flow_rate / issue.max_rate > 0.95 %}crit{% elif issue.flow_rate / issue.max_rate > 0.8 %}warn{% else %}ok{% endif %}"
+                                        style="width: {{ (issue.flow_rate / issue.max_rate * 100)|round }}%"></div>
+                                </div>
+                                <span style="font-size:11px; color: #f85149; margin-left: 8px;">{{ issue.flow_rate }}/{{
+                                    issue.max_rate|int }} items/min</span>
+                            </div>
+                            {% endif %}
+                            <div class="issue-meta">
+                                <span class="issue-tag {{ issue.severity }}">{{ issue.category }}</span>
+                                {% if issue.root_cause %}
+                                <span class="issue-tag cat">{{ issue.root_cause }}</span>
+                                {% endif %}
+                                {% if issue.position %}
+                                X:{{ "%.0f"|format(issue.position[0] / 100) }}
+                                Y:{{ "%.0f"|format(issue.position[1] / 100) }}
+                                {% endif %}
+                            </div>
+                            <div style="margin-top: 6px;">
+                                <button class="filter-btn" onclick="event.stopPropagation(); traceIssue('{{ issue.building_id|e }}')" style="color:#39c5cf;">Trace on Map</button>
+                                {% if issue.root_cause %}
+                                <span style="font-size: 11px; color: #58a6ff; margin-left: 6px;">{{ issue.suggestion[:80] if issue.suggestion else '' }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div style="padding: 24px; text-align: center; color: #3fb950;">No belt bottlenecks detected</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Input Starvation & Clock Mismatch -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Input Starvation &amp; Clock Issues</h2>
+                    <span class="badge">{{ starvation_issues|length + (issues|selectattr('category', 'equalto', 'Clock
+                        Too High')|list|length) }}</span>
+                </div>
+                <div class="panel-body">
+                    {% for issue in issues if issue.category in ('Input Starvation', 'Clock Too High') %}
+                    <div class="issue-item" data-severity="{{ issue.severity }}" onclick="traceIssue('{{ issue.building_id|e }}')">
+                        <div class="issue-icon {{ issue.severity }}">!</div>
+                        <div class="issue-content">
+                            <div class="issue-title">{{ issue.title }}</div>
+                            <div class="issue-desc">{{ issue.description }}</div>
+                            {% if issue.sufficiency is defined %}
+                            <div style="margin-top: 6px;">
+                                <div class="flow-bar-bg" style="width: 200px; display: inline-block;">
+                                    <div class="flow-bar {% if issue.sufficiency < 0.5 %}crit{% elif issue.sufficiency < 0.8 %}warn{% else %}ok{% endif %}"
+                                        style="width: {{ (issue.sufficiency * 100)|round }}%"></div>
+                                </div>
+                                <span
+                                    style="font-size:11px; color: {% if issue.sufficiency < 0.5 %}#f85149{% else %}#d29922{% endif %}; margin-left: 8px;">
+                                    {{ issue.actual_input }}/{{ issue.expected_input }} input/min ({{ (issue.sufficiency
+                                    * 100)|round }}%)
+                                </span>
+                            </div>
+                            {% endif %}
+                            <div class="issue-meta">
+                                <span class="issue-tag {{ issue.severity }}">{{ issue.category }}</span>
+                                {% if issue.clock_speed is defined %}
+                                <span class="issue-tag cat">{{ (issue.clock_speed * 100)|round }}% clock</span>
+                                {% endif %}
+                                {% if issue.root_cause %}
+                                <span class="issue-tag cat">{{ issue.root_cause }}</span>
+                                {% endif %}
+                                {% if issue.position %}
+                                X:{{ "%.0f"|format(issue.position[0] / 100) }}
+                                Y:{{ "%.0f"|format(issue.position[1] / 100) }}
+                                {% endif %}
+                            </div>
+                            <div style="margin-top: 6px;">
+                                <button class="filter-btn" onclick="event.stopPropagation(); traceIssue('{{ issue.building_id|e }}')" style="color:#39c5cf;">Trace on Map</button>
+                                {% if issue.suggestion %}
+                                <span style="font-size: 11px; color: #58a6ff; margin-left: 6px;">{{ issue.suggestion[:80] }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div style="padding: 24px; text-align: center; color: #3fb950;">All machines properly fed</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Dead Ends & Missing Connections -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Dead Ends &amp; Missing Connections</h2>
+                    <span class="badge">{{ (issues|selectattr('category', 'equalto', 'Dead End')|list|length) +
+                        (issues|selectattr('category', 'equalto', 'No Input')|list|length) }}</span>
+                </div>
+                <div class="panel-body">
+                    {% for issue in issues if issue.category in ('Dead End', 'No Input') %}
+                    <div class="issue-item" data-severity="{{ issue.severity }}" onclick="traceIssue('{{ issue.building_id|e }}')">
+                        <div class="issue-icon {{ issue.severity }}">!</div>
+                        <div class="issue-content">
+                            <div class="issue-title">{{ issue.title }}</div>
+                            <div class="issue-desc">{{ issue.description }}</div>
+                            <div class="issue-meta">
+                                <span class="issue-tag {{ issue.severity }}">{{ issue.category }}</span>
+                                {% if issue.position %}
+                                X:{{ "%.0f"|format(issue.position[0] / 100) }}
+                                Y:{{ "%.0f"|format(issue.position[1] / 100) }}
+                                {% endif %}
+                            </div>
+                            <div style="margin-top: 6px;">
+                                <button class="filter-btn" onclick="event.stopPropagation(); traceIssue('{{ issue.building_id|e }}')" style="color:#39c5cf;">Trace on Map</button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Idle & Underutilized -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Idle &amp; Underutilized</h2>
+                    <span class="badge">{{ (issues|selectattr('category', 'equalto', 'Idle Machine')|list|length) +
+                        (issues|selectattr('category', 'equalto', 'Underutilized Miner')|list|length) }}</span>
+                </div>
+                <div class="panel-body">
+                    {% for issue in issues if issue.category in ('Idle Machine', 'Idle Generator', 'Underutilized
+                    Miner', 'No Recipe') %}
+                    <div class="issue-item" data-severity="{{ issue.severity }}" onclick="traceIssue('{{ issue.building_id|e }}')">
+                        <div class="issue-icon {{ issue.severity }}">
+                            {% if issue.severity == 'error' %}!{% elif issue.severity == 'warning' %}!{% else %}i{% endif %}
+                        </div>
+                        <div class="issue-content">
+                            <div class="issue-title">{{ issue.title }}</div>
+                            <div class="issue-desc">{{ issue.description }}</div>
+                            <div class="issue-meta">
+                                <span class="issue-tag {{ issue.severity }}">{{ issue.category }}</span>
+                                {% if issue.position %}
+                                X:{{ "%.0f"|format(issue.position[0] / 100) }}
+                                Y:{{ "%.0f"|format(issue.position[1] / 100) }}
+                                {% endif %}
+                            </div>
+                            <div style="margin-top: 6px;">
+                                <button class="filter-btn" onclick="event.stopPropagation(); traceIssue('{{ issue.building_id|e }}')" style="color:#39c5cf;">Trace on Map</button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Manifold Blocks (Structural Equivalence) -->
+        <div class="panel" id="manifoldPanel" style="margin-top: 16px;">
+            <div class="panel-header">
+                <h2>Manifold Blocks (Structural Equivalence)</h2>
+                <span class="badge" id="manifoldBadge">...</span>
+            </div>
+            <div class="panel-body" id="manifoldBody" style="max-height: 400px;">
+                <div style="color:#484f58;text-align:center;padding:24px;">Loading manifold blocks...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ TAB 2: All Issues ═══ -->
+    <div class="tab-panel" id="tab-issues">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>All Issues</h2>
+                <span class="badge">{{ issues|length }}</span>
+                <div class="filter-btns">
+                    <button class="filter-btn active" onclick="filterIssues('all', this)">All</button>
+                    <button class="filter-btn" onclick="filterIssues('error', this)">Errors ({{ error_count }})</button>
+                    <button class="filter-btn" onclick="filterIssues('warning', this)">Warnings ({{ warn_count
+                        }})</button>
+                    <button class="filter-btn" onclick="filterIssues('info', this)">Info ({{ info_count }})</button>
+                </div>
+            </div>
+            <div class="panel-body" style="max-height: 800px;" id="issuesList">
+                {% for issue in issues %}
+                <div class="issue-item" data-severity="{{ issue.severity }}" data-category="{{ issue.category }}" onclick="traceIssue('{{ issue.building_id|e }}')">
+                    <div class="issue-icon {{ issue.severity }}">
+                        {% if issue.severity == 'error' %}!{% elif issue.severity == 'warning' %}!{% else %}i{% endif %}
+                    </div>
+                    <div class="issue-content">
+                        <div class="issue-title">{{ issue.title }}</div>
+                        <div class="issue-desc">{{ issue.description }}</div>
+                        <div class="issue-meta">
+                            <span class="issue-tag {{ issue.severity }}">{{ issue.category }}</span>
+                            {% if issue.root_cause %}
+                            <span class="issue-tag cat">{{ issue.root_cause }}</span>
+                            {% endif %}
+                            {% if issue.position %}
+                            X:{{ "%.0f"|format(issue.position[0] / 100) }}
+                            Y:{{ "%.0f"|format(issue.position[1] / 100) }}
+                            {% endif %}
+                        </div>
+                        {% if issue.building_id %}
+                        <div style="margin-top: 6px;">
+                            <button class="filter-btn" onclick="event.stopPropagation(); traceIssue('{{ issue.building_id|e }}')" style="color:#39c5cf;">Trace on Map</button>
+                            {% if issue.suggestion %}
+                            <span style="font-size: 11px; color: #58a6ff; margin-left: 6px;">{{ issue.suggestion[:80] }}</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ TAB 3: Buildings ═══ -->
+    <div class="tab-panel" id="tab-buildings">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Production Machines</h2>
+                <span class="badge">{{ factory.stats.by_category.get('production', 0) }}</span>
+                <div class="filter-btns">
+                    <button class="filter-btn active" onclick="filterTable('all', this)">All</button>
+                    <button class="filter-btn" onclick="filterTable('idle', this)">Idle</button>
+                    <button class="filter-btn" onclick="filterTable('low', this)">Low Prod.</button>
+                    <button class="filter-btn" onclick="filterTable('starved', this)">Starved</button>
+                </div>
+            </div>
+            <div class="panel-body" style="max-height: 700px;">
+                <table class="bld-table">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Building</th>
+                            <th>Recipe</th>
+                            <th>Clock</th>
+                            <th>Productivity</th>
+                            <th>In / Out</th>
+                            <th>Position</th>
+                        </tr>
+                    </thead>
+                    <tbody id="machineTable">
+                        {% for b_id, b in factory.buildings.items() if b.category == 'production' %}
+                        {% set is_starved = false %}
+                        {% for issue in issues if issue.category == 'Input Starvation' and issue.building_id == b_id %}
+                        {% set is_starved = true %}
+                        {% endfor %}
+                        <tr class="machine-row" data-producing="{{ b.is_producing|lower }}"
+                            data-productivity="{{ b.productivity }}"
+                            data-starved="{{ 'true' if is_starved else 'false' }}">
+                            <td>
+                                <span
+                                    class="status-dot {% if b.is_producing %}producing{% else %}idle{% endif %}"></span>
+                                {{ "Running" if b.is_producing else "Idle" }}
+                            </td>
+                            <td><strong>{{ b.friendly_name }}</strong></td>
+                            <td>{{ b.recipe_name or '(none)' }}</td>
+                            <td>{{ "%.0f"|format(b.clock_speed * 100) }}%</td>
+                            <td>
+                                <span class="pbar">
+                                    <span
+                                        class="pbar-fill {% if b.productivity > 0.8 %}good{% elif b.productivity > 0.4 %}mid{% else %}low{% endif %}"
+                                        style="width: {{ (b.productivity * 100)|round }}%"></span>
+                                </span>
+                                {{ "%.0f"|format(b.productivity * 100) }}%
+                            </td>
+                            <td>{{ b.input_belts|length }} / {{ b.output_belts|length }}</td>
+                            <td style="font-size:11px; color:#484f58">
+                                {{ "%.0f"|format(b.position[0] / 100) }},
+                                {{ "%.0f"|format(b.position[1] / 100) }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ TAB 4: Overview ═══ -->
+    <div class="tab-panel" id="tab-overview">
+        <div class="grid-2">
+            <!-- Building Breakdown -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Building Counts</h2>
+                    <span class="badge">{{ factory.stats.by_type|length }} types</span>
+                </div>
+                <div class="panel-body">
+                    {% set max_count = factory.stats.by_type.values()|max if factory.stats.by_type else 1 %}
+                    {% for name, count in factory.stats.by_type.items()|sort(attribute='1', reverse=True) %}
+                    <div class="recipe-bar">
+                        <span class="count">{{ count }}</span>
+                        <span class="name">{{ name }}</span>
+                        <span class="bar"><span class="bar-fill"
+                                style="width: {{ (count / max_count * 100)|round }}%"></span></span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Recipe Breakdown -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Active Recipes</h2>
+                    <span class="badge">{{ factory.stats.by_recipe|length }} recipes</span>
+                </div>
+                <div class="panel-body">
+                    {% set max_recipe = factory.stats.by_recipe.values()|max if factory.stats.by_recipe else 1 %}
+                    {% for name, count in factory.stats.by_recipe.items()|sort(attribute='1', reverse=True) %}
+                    <div class="recipe-bar">
+                        <span class="count">{{ count }}</span>
+                        <span class="name">{{ name }}</span>
+                        <span class="bar"><span class="bar-fill"
+                                style="width: {{ (count / max_recipe * 100)|round }}%"></span></span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ TAB 5: Factory Map ═══ -->
+    <div class="tab-panel" id="tab-map">
+        <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: center; flex-wrap: wrap;">
+            <span style="color: #8b949e; font-size: 12px;">Show:</span>
+            <label class="map-toggle"><input type="checkbox" id="mapShowEdges" checked onchange="drawMap()"> <span
+                    class="toggle-dot" style="background: #30363d;"></span> Connections</label>
+            <label class="map-toggle"><input type="checkbox" id="mapShowOk" checked onchange="drawMap()"> <span
+                    class="toggle-dot" style="background: #3fb950;"></span> OK</label>
+            <label class="map-toggle"><input type="checkbox" id="mapShowWarn" checked onchange="drawMap()"> <span
+                    class="toggle-dot" style="background: #d29922;"></span> Warnings</label>
+            <label class="map-toggle"><input type="checkbox" id="mapShowErr" checked onchange="drawMap()"> <span
+                    class="toggle-dot" style="background: #f85149;"></span> Errors</label>
+            <label class="map-toggle"><input type="checkbox" id="mapShowLogistics" onchange="drawMap()"> <span
+                    class="toggle-dot" style="background: #484f58;"></span> Logistics</label>
+            <label class="map-toggle"><input type="checkbox" id="mapShowDistricts" onchange="drawMap()"> <span
+                    class="toggle-dot" style="background: #a371f7;"></span> Districts</label>
+            <span style="color: #484f58; font-size: 11px; margin-left: auto;" id="mapInfo">Scroll to zoom, drag to
+                pan</span>
+        </div>
+        <!-- Lasso Toolbar -->
+        <div class="lasso-toolbar" id="lassoToolbar">
+            <button class="lasso-btn" id="lassoToggleBtn" onclick="toggleLassoMode()">Lasso Select</button>
+            <span id="lassoStatus" style="color:#8b949e;font-size:11px;">Click to enable lasso drawing mode</span>
+            <button class="lasso-btn" id="lassoSaveBtn" onclick="saveLasso()" style="display:none;">Save Lasso</button>
+            <button class="lasso-btn" id="lassoCancelBtn" onclick="cancelLasso()" style="display:none;color:#f85149;">Cancel</button>
+            <input type="text" id="lassoNameInput" placeholder="Lasso name..." style="display:none;background:#0d1117;border:1px solid #30363d;color:#c9d1d9;padding:3px 8px;border-radius:4px;font-size:11px;width:140px;">
+        </div>
+        <div id="mapContainer"
+            style="position: relative; background: #0a0e14; border: 1px solid #30363d; border-radius: 8px; overflow: hidden;">
+            <canvas id="mapCanvas" style="display: block; width: 100%; cursor: grab;"></canvas>
+            <div id="mapTooltip"
+                style="display:none; position:absolute; background:#161b22; border:1px solid #30363d; border-radius:6px; padding:8px 12px; font-size:12px; pointer-events:none; z-index:10; max-width:300px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+            </div>
+            <!-- Trace Info Panel -->
+            <div id="tracePanel" class="trace-panel">
+                <div class="trace-panel-header">
+                    <h3 id="tracePanelTitle">Supply Chain Trace</h3>
+                    <button class="trace-btn" onclick="clearTrace()" style="color: #f85149; padding: 2px 8px;">X</button>
+                </div>
+                <div id="tracePanelBody"></div>
+            </div>
+            <!-- Trace Controls -->
+            <div id="traceControls" class="trace-controls">
+                <button class="trace-btn" onclick="stepTrace(-1)">&#8592; Prev</button>
+                <span id="traceStepInfo" style="font-size: 12px; font-weight: 600; color: #39c5cf;">Step 1 / 5</span>
+                <button class="trace-btn" onclick="stepTrace(1)">Next &#8594;</button>
+                <span style="color:#484f58;">|</span>
+                <button class="trace-btn" onclick="traceStep=-1;updateTraceStep();" style="color:#58a6ff;">Show All</button>
+                <button class="trace-btn" onclick="clearTrace()" style="color: #f85149;">Close</button>
+            </div>
+            <!-- Performance Legend (shown during trace) -->
+            <div id="tracePerfLegend" style="display:none; gap:10px; align-items:center; padding:4px 12px; font-size:11px; color:#8b949e; border-top:1px solid #21262d;">
+                <span style="font-weight:600;color:#c9d1d9;">Performance:</span>
+                <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#3fb950;vertical-align:middle;"></span> Healthy</span>
+                <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#d29922;vertical-align:middle;"></span> Moderate</span>
+                <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f85149;vertical-align:middle;"></span> Bottleneck</span>
+                <span style="color:#484f58;">|</span>
+                <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#39c5cf;vertical-align:middle;"></span> Origin</span>
+                <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#8b949e;vertical-align:middle;"></span> Logistics</span>
+            </div>
+        </div>
+        <!-- Legend -->
+        <div style="display: flex; gap: 16px; margin-top: 10px; flex-wrap: wrap; font-size: 11px; color: #8b949e;">
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#3fb950;margin-right:4px;"></span>Producing</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#d29922;margin-right:4px;"></span>Warning</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f85149;margin-right:4px;"></span>Error</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#58a6ff;margin-right:4px;"></span>Miner/Extractor</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#a371f7;margin-right:4px;"></span>Generator</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#484f58;margin-right:4px;"></span>Logistics</span>
+            <span style="border-left:1px solid #30363d;padding-left:12px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#39c5cf;margin-right:4px;"></span>Trace Origin</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#58a6ff;margin-right:4px;"></span>Upstream</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#d29922;margin-right:4px;"></span>Downstream</span>
+            <span style="color:#484f58;">Click building to trace | Click issue to trace from issue</span>
+        </div>
+    </div>
+
+    <!-- ═══ TAB 6: Feedback ═══ -->
+    <div class="tab-panel" id="tab-feedback">
+        <div class="grid-2">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Feedback Summary</h2>
+                    <span class="badge" id="fbTotalBadge">0</span>
+                </div>
+                <div class="panel-body" id="fbStatsBody" style="padding: 16px;">
+                    <div style="color: #484f58; text-align: center; padding: 24px;">Loading...</div>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Recent Feedback</h2>
+                    <div class="filter-btns">
+                        <button class="filter-btn active" onclick="filterFeedback('all', this)">All</button>
+                        <button class="filter-btn" onclick="filterFeedback('correct', this)">Correct</button>
+                        <button class="filter-btn" onclick="filterFeedback('wrong', this)">Wrong</button>
+                        <button class="filter-btn" onclick="filterFeedback('partial', this)">Partial</button>
+                    </div>
+                </div>
+                <div class="panel-body" id="fbListBody" style="max-height: 600px;">
+                    <div style="color: #484f58; text-align: center; padding: 24px;">No feedback yet</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ TAB 7: Tickets ═══ -->
+    <div class="tab-panel" id="tab-tickets">
+        <div class="grid-2">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Ticket Statistics</h2>
+                </div>
+                <div class="panel-body" id="ticketStatsBody" style="padding: 16px;">
+                    <div style="color: #484f58; text-align: center; padding: 24px;">Loading...</div>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Work Orders</h2>
+                    <span class="badge" id="ticketListBadge">0</span>
+                    <div class="filter-btns">
+                        <button class="filter-btn active" onclick="filterTickets('all', this)">All</button>
+                        <button class="filter-btn" onclick="filterTickets('OPEN', this)">Open</button>
+                        <button class="filter-btn" onclick="filterTickets('IN_PROGRESS', this)">In Progress</button>
+                        <button class="filter-btn" onclick="filterTickets('RESOLVED', this)">Resolved</button>
+                    </div>
+                </div>
+                <div class="panel-body" id="ticketListBody" style="max-height: 700px;">
+                    <div style="color: #484f58; text-align: center; padding: 24px;">No tickets</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ TAB 8: Ledger / Balance Sheet ═══ -->
+    <div class="tab-panel" id="tab-ledger">
+        <div class="grid-2">
+            <!-- District Selector + Ledger Table -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Balance Sheet</h2>
+                    <span class="badge" id="ledgerItemCount">0 items</span>
+                    <div class="filter-btns">
+                        <select id="ledgerDistrictSelect" onchange="loadDistrictLedger()" style="background:#21262d;border:1px solid #30363d;color:#c9d1d9;padding:3px 8px;border-radius:4px;font-size:11px;">
+                            <option value="">Select a district...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="panel-body" id="ledgerBody" style="max-height: 700px;">
+                    <div style="color: #484f58; text-align: center; padding: 24px;">
+                        Select a district or draw a lasso on the map to view the item balance sheet.
+                    </div>
+                </div>
+            </div>
+            <!-- Ledger Summary -->
+            <div>
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>Summary</h2>
+                    </div>
+                    <div class="panel-body" id="ledgerSummaryBody" style="padding: 16px;">
+                        <div style="color: #484f58; text-align: center; padding: 24px;">No district selected</div>
+                    </div>
+                </div>
+                <!-- Custom Lassos List -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>Custom Lassos</h2>
+                        <span class="badge" id="lassoCount">0</span>
+                    </div>
+                    <div class="panel-body" id="lassoListBody" style="max-height: 300px; padding: 8px;">
+                        <div style="color: #484f58; text-align: center; padding: 16px; font-size: 12px;">
+                            Use the Lasso tool on the Factory Map to create custom groups.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(name, btn) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('tab-' + name).classList.add('active');
+        }
+
+        function filterIssues(severity, btn) {
+            btn.parentElement.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.querySelectorAll('#issuesList .issue-item').forEach(item => {
+                if (severity === 'all' || item.dataset.severity === severity) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        function filterTable(mode, btn) {
+            btn.parentElement.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.querySelectorAll('.machine-row').forEach(row => {
+                if (mode === 'all') {
+                    row.style.display = '';
+                } else if (mode === 'idle') {
+                    row.style.display = row.dataset.producing === 'false' ? '' : 'none';
+                } else if (mode === 'low') {
+                    row.style.display = parseFloat(row.dataset.productivity) < 0.5 ? '' : 'none';
+                } else if (mode === 'starved') {
+                    row.style.display = row.dataset.starved === 'true' ? '' : 'none';
+                }
+            });
+        }
+
+        /* ═══ TRACE SYSTEM ═══ */
+        const issuesData = {{ issues | tojson }};
+
+        // Trace state
+        let traceData = null;     // Response from /api/traceback
+        let traceNodeSet = null;  // Set of node IDs in trace
+        let traceEdgeSet = null;  // Set of "src|dst" keys for edge matching
+        let traceEdgeFlow = null; // Map of "src|dst" -> {flow_rate, max_rate, util}
+        let traceStep = -1;       // -1 = show all, 0..N = show up to layer N
+        let traceLayers = [];     // Flattened layers: [{ids:[], dir:'up'|'origin'|'down'}, ...]
+        let traceOriginId = null;
+
+        function traceBuilding(buildingId, direction) {
+            direction = direction || 'both';
+            const url = '/api/traceback/' + encodeURIComponent(buildingId) + '?dir=' + direction;
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) { console.error(data.error); return; }
+                    traceData = data;
+                    traceOriginId = data.origin;
+                    traceNodeSet = new Set(data.node_ids);
+                    traceEdgeSet = new Set(data.edges.map(e => e.src + '|' + e.dst));
+                    // Build flow lookup for performance coloring
+                    traceEdgeFlow = new Map();
+                    for (const e of data.edges) {
+                        const key = e.src + '|' + e.dst;
+                        const util = e.max_rate > 0 ? e.flow_rate / e.max_rate : 0;
+                        traceEdgeFlow.set(key, {
+                            flow_rate: e.flow_rate,
+                            max_rate: e.max_rate,
+                            util: util,
+                            is_pipe: e.is_pipe || false,
+                        });
+                    }
+
+                    // Build flattened layers for step-through
+                    traceLayers = [];
+                    // Upstream layers (furthest first, approaching origin)
+                    if (data.layers_up) {
+                        for (const layer of data.layers_up) {
+                            traceLayers.push({ ids: layer, dir: 'upstream' });
+                        }
+                    }
+                    // Downstream layers (origin first, going outward)
+                    if (data.layers_down) {
+                        for (let i = 0; i < data.layers_down.length; i++) {
+                            const dir = i === 0 ? 'origin' : 'downstream';
+                            traceLayers.push({ ids: data.layers_down[i], dir: dir });
+                        }
+                    }
+
+                    traceStep = -1; // show all
+                    showTraceUI();
+                    drawMap();
+
+                    // Center on origin
+                    const origin = mapData.buildings.find(b => b.id === data.origin);
+                    if (origin) {
+                        cam.x = origin.x;
+                        cam.y = origin.y;
+                        drawMap();
+                    }
+                });
+        }
+
+        function showTraceUI() {
+            if (!traceData) return;
+            // Show controls + performance legend
+            document.getElementById('traceControls').style.display = 'flex';
+            document.getElementById('tracePerfLegend').style.display = 'flex';
+            updateTraceStep();
+
+            // Build trace info panel
+            const panel = document.getElementById('tracePanel');
+            const body = document.getElementById('tracePanelBody');
+            panel.style.display = 'block';
+
+            const info = traceData.node_info;
+            const originId = traceData.origin;
+            const originInfo = info[originId];
+
+            document.getElementById('tracePanelTitle').textContent =
+                'Trace: ' + (originInfo ? originInfo.name : 'Building');
+
+            let html = '';
+            // Upstream nodes
+            const upIds = (traceData.upstream_ids || []).filter(id => id !== originId);
+            if (upIds.length > 0) {
+                html += '<div style="padding:6px 16px;color:#58a6ff;font-size:11px;font-weight:600;background:#58a6ff11;border-bottom:1px solid #1c2128;">UPSTREAM (' + upIds.length + ')</div>';
+                for (const nid of upIds) {
+                    const n = info[nid];
+                    if (!n) continue;
+                    html += buildTraceNodeHTML(nid, n, 'upstream');
+                }
+            }
+
+            // Origin
+            if (originInfo) {
+                html += '<div style="padding:6px 16px;color:#39c5cf;font-size:11px;font-weight:600;background:#39c5cf11;border-bottom:1px solid #1c2128;">ORIGIN</div>';
+                html += buildTraceNodeHTML(originId, originInfo, 'origin');
+            }
+
+            // Downstream nodes
+            const downIds = (traceData.downstream_ids || []).filter(id => id !== originId);
+            if (downIds.length > 0) {
+                html += '<div style="padding:6px 16px;color:#d29922;font-size:11px;font-weight:600;background:#d2992211;border-bottom:1px solid #1c2128;">DOWNSTREAM (' + downIds.length + ')</div>';
+                for (const nid of downIds) {
+                    const n = info[nid];
+                    if (!n) continue;
+                    html += buildTraceNodeHTML(nid, n, 'downstream');
+                }
+            }
+
+            // ── Feedback Form (at bottom of trace panel) ──
+            const issue = issuesData.find(i => i.building_id === traceData.origin);
+            html += `<div class="feedback-section">
+                <h4>Rate This Diagnosis</h4>
+                <div class="fb-rating-btns" id="fbRatingBtns">
+                    <button class="fb-rating-btn" data-val="correct" onclick="selectRating(this,'correct')">✓ Correct</button>
+                    <button class="fb-rating-btn" data-val="wrong" onclick="selectRating(this,'wrong')">✗ Wrong</button>
+                    <button class="fb-rating-btn" data-val="partial" onclick="selectRating(this,'partial')">~ Partial</button>
+                    <button class="fb-rating-btn" data-val="unsure" onclick="selectRating(this,'unsure')">? Unsure</button>
+                </div>
+                <textarea class="fb-input" id="fbComment" rows="2" placeholder="What's actually happening? (optional)"></textarea>
+                <input class="fb-input" id="fbActualCause" placeholder="Actual root cause (if different)" />
+                <input class="fb-input" id="fbSuggestedFix" placeholder="Suggested fix (optional)" />
+                <div class="fb-tags" id="fbTagsContainer"></div>
+                <button class="fb-submit" id="fbSubmitBtn" onclick="submitFeedback()" disabled>Select a rating to submit</button>
+            </div>`;
+
+            // ── Existing feedback for this building ──
+            html += `<div class="fb-existing" id="fbExistingSection" style="display:none;">
+                <h4 style="font-size:12px;color:#8b949e;margin-bottom:6px;">Previous Feedback</h4>
+                <div id="fbExistingList"></div>
+            </div>`;
+
+            body.innerHTML = html;
+
+            // Load tags into the form
+            loadFeedbackTags();
+            // Load existing feedback for this building
+            loadExistingFeedback(traceData.origin);
+        }
+
+        /* ═══ FEEDBACK SYSTEM ═══ */
+        let selectedRating = null;
+        let selectedTags = new Set();
+
+        function selectRating(btn, rating) {
+            selectedRating = rating;
+            document.querySelectorAll('#fbRatingBtns .fb-rating-btn').forEach(b => {
+                b.classList.remove('selected', 'correct', 'wrong', 'partial', 'unsure');
+            });
+            btn.classList.add('selected', rating);
+            const submitBtn = document.getElementById('fbSubmitBtn');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Feedback';
+            }
+        }
+
+        function toggleFbTag(el, tagName) {
+            if (selectedTags.has(tagName)) {
+                selectedTags.delete(tagName);
+                el.classList.remove('selected');
+            } else {
+                selectedTags.add(tagName);
+                el.classList.add('selected');
+            }
+        }
+
+        function loadFeedbackTags() {
+            fetch('/api/feedback/tags')
+                .then(r => r.json())
+                .then(tags => {
+                    const container = document.getElementById('fbTagsContainer');
+                    if (!container) return;
+                    container.innerHTML = tags.map(t =>
+                        `<span class="fb-tag" onclick="toggleFbTag(this,'${t.name}')" style="border-color:${t.color}33;color:${t.color}">${t.name}</span>`
+                    ).join('');
+                });
+        }
+
+        function loadExistingFeedback(buildingId) {
+            fetch('/api/feedback/linked/' + encodeURIComponent(buildingId))
+                .then(r => r.json())
+                .then(data => {
+                    const section = document.getElementById('fbExistingSection');
+                    const list = document.getElementById('fbExistingList');
+                    if (!section || !list) return;
+                    const all = [...(data.direct || []), ...(data.in_trace || [])];
+                    if (all.length === 0) { section.style.display = 'none'; return; }
+                    section.style.display = 'block';
+                    list.innerHTML = all.map(fb => {
+                        const ratingColors = {correct:'#3fb950', wrong:'#f85149', partial:'#d29922', unsure:'#58a6ff'};
+                        const rColor = ratingColors[fb.rating] || '#8b949e';
+                        const date = new Date(fb.created_at * 1000).toLocaleDateString();
+                        const tags = fb.tags ? JSON.parse(fb.tags).map(t => `<span style="background:${rColor}22;color:${rColor};padding:1px 4px;border-radius:3px;font-size:9px;margin-left:3px;">${t}</span>`).join('') : '';
+                        return `<div class="fb-entry">
+                            <span style="color:${rColor};font-weight:600;">${fb.rating.toUpperCase()}</span>
+                            ${fb.issue_category ? `<span style="color:#484f58;"> — ${fb.issue_category}</span>` : ''}
+                            ${tags}
+                            ${fb.comment ? `<div style="color:#c9d1d9;margin-top:2px;">${fb.comment}</div>` : ''}
+                            ${fb.actual_cause ? `<div style="color:#58a6ff;font-size:10px;">Actual: ${fb.actual_cause}</div>` : ''}
+                            <div class="fb-meta">${date} • ${fb.building_name || fb.building_id}</div>
+                        </div>`;
+                    }).join('');
+                });
+        }
+
+        function submitFeedback() {
+            if (!selectedRating || !traceData) return;
+            const originId = traceData.origin;
+            const originInfo = traceData.node_info[originId];
+            const issue = issuesData.find(i => i.building_id === originId);
+
+            const payload = {
+                building_id: originId,
+                rating: selectedRating,
+                comment: document.getElementById('fbComment')?.value || null,
+                tags: selectedTags.size > 0 ? Array.from(selectedTags) : null,
+                building_name: originInfo ? originInfo.name : null,
+                recipe: originInfo ? originInfo.recipe : null,
+                issue_category: issue ? issue.category : null,
+                issue_title: issue ? issue.title : null,
+                issue_severity: issue ? issue.severity : null,
+                trace_snapshot: {
+                    node_ids: traceData.node_ids,
+                    upstream_ids: traceData.upstream_ids,
+                    downstream_ids: traceData.downstream_ids,
+                    edges: traceData.edges,
+                    node_info: traceData.node_info,
+                },
+                issue_snapshot: issue || null,
+                flow_context: originInfo ? {
+                    avail_in: originInfo.avail_in,
+                    expected_in: originInfo.expected_in,
+                    avail_out: originInfo.avail_out,
+                    expected_out: originInfo.expected_out,
+                    clock: originInfo.clock,
+                } : null,
+                actual_cause: document.getElementById('fbActualCause')?.value || null,
+                suggested_fix: document.getElementById('fbSuggestedFix')?.value || null,
+                diagnosis_root_cause: issue ? issue.root_cause : null,
+                diagnosis_suggestion: issue ? issue.suggestion : null,
+            };
+
+            const btn = document.getElementById('fbSubmitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Submitting...';
+
+            fetch('/api/feedback', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload),
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.ok) {
+                    btn.textContent = '✓ Submitted!';
+                    btn.style.background = '#238636';
+                    // Reset form after a moment
+                    setTimeout(() => {
+                        selectedRating = null;
+                        selectedTags.clear();
+                        btn.textContent = 'Select a rating to submit';
+                        btn.disabled = true;
+                        btn.style.background = '';
+                        document.querySelectorAll('#fbRatingBtns .fb-rating-btn').forEach(b => b.classList.remove('selected','correct','wrong','partial','unsure'));
+                        const c = document.getElementById('fbComment'); if(c) c.value = '';
+                        const a = document.getElementById('fbActualCause'); if(a) a.value = '';
+                        const s = document.getElementById('fbSuggestedFix'); if(s) s.value = '';
+                        document.querySelectorAll('#fbTagsContainer .fb-tag').forEach(t => t.classList.remove('selected'));
+                    }, 2000);
+                    // Reload existing feedback
+                    loadExistingFeedback(originId);
+                    // Update feedback count badge
+                    updateFeedbackCount();
+                } else {
+                    btn.textContent = 'Error: ' + (data.error || 'Unknown');
+                    btn.disabled = false;
+                }
+            })
+            .catch(err => {
+                btn.textContent = 'Network error';
+                btn.disabled = false;
+            });
+        }
+
+        function updateFeedbackCount() {
+            fetch('/api/feedback/stats')
+                .then(r => r.json())
+                .then(stats => {
+                    const badge = document.getElementById('feedbackCount');
+                    if (badge) badge.textContent = stats.total || 0;
+                });
+        }
+
+        /* ═══ FEEDBACK TAB (Tab 6) ═══ */
+        let feedbackLoaded = false;
+
+        function loadFeedback() {
+            feedbackLoaded = true;
+            // Load stats
+            fetch('/api/feedback/stats')
+                .then(r => r.json())
+                .then(stats => {
+                    const body = document.getElementById('fbStatsBody');
+                    if (!body) return;
+                    const badge = document.getElementById('fbTotalBadge');
+                    const countBadge = document.getElementById('feedbackCount');
+                    if (badge) badge.textContent = stats.total || 0;
+                    if (countBadge) countBadge.textContent = stats.total || 0;
+
+                    if (!stats.total) {
+                        body.innerHTML = '<div style="color:#484f58;text-align:center;padding:24px;">No feedback submitted yet.<br><span style="font-size:11px;">Trace a building on the map, then rate the diagnosis.</span></div>';
+                        return;
+                    }
+
+                    const r = stats.ratings || {};
+                    let html = '<div class="fb-stat-grid">';
+                    html += buildStatCard(r.correct || 0, 'Correct', '#3fb950');
+                    html += buildStatCard(r.wrong || 0, 'Wrong', '#f85149');
+                    html += buildStatCard(r.partial || 0, 'Partial', '#d29922');
+                    html += buildStatCard(r.unsure || 0, 'Unsure', '#58a6ff');
+                    html += '</div>';
+
+                    // Accuracy rate
+                    const total = stats.total;
+                    const correct = r.correct || 0;
+                    const accuracy = total > 0 ? (correct / total * 100).toFixed(0) : 0;
+                    html += `<div style="text-align:center;margin-bottom:12px;">
+                        <div style="font-size:28px;font-weight:700;color:${accuracy >= 70 ? '#3fb950' : accuracy >= 40 ? '#d29922' : '#f85149'};">${accuracy}%</div>
+                        <div style="font-size:11px;color:#8b949e;">Diagnosis accuracy (${correct}/${total} correct)</div>
+                    </div>`;
+
+                    // By category breakdown
+                    if (stats.by_category && Object.keys(stats.by_category).length) {
+                        html += '<div style="margin-top:12px;">';
+                        html += '<div style="font-size:11px;color:#8b949e;font-weight:600;margin-bottom:6px;">By Category</div>';
+                        for (const [cat, ratings] of Object.entries(stats.by_category)) {
+                            const catTotal = Object.values(ratings).reduce((a, b) => a + b, 0);
+                            const catCorrect = ratings.correct || 0;
+                            const catPct = catTotal > 0 ? (catCorrect / catTotal * 100).toFixed(0) : 0;
+                            html += `<div style="display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;">
+                                <span style="flex:1;color:#c9d1d9;">${cat}</span>
+                                <span style="color:${catPct >= 70 ? '#3fb950' : catPct >= 40 ? '#d29922' : '#f85149'};font-weight:600;">${catPct}%</span>
+                                <span style="color:#484f58;font-size:11px;">(${catTotal})</span>
+                            </div>`;
+                        }
+                        html += '</div>';
+                    }
+
+                    // Common wrong causes
+                    if (stats.common_wrong_causes && stats.common_wrong_causes.length) {
+                        html += '<div style="margin-top:12px;">';
+                        html += '<div style="font-size:11px;color:#f85149;font-weight:600;margin-bottom:6px;">Common Wrong Diagnoses</div>';
+                        for (const item of stats.common_wrong_causes) {
+                            html += `<div style="font-size:12px;padding:2px 0;color:#c9d1d9;">
+                                <span style="color:#f85149;font-weight:600;">${item.count}x</span> ${item.cause}
+                            </div>`;
+                        }
+                        html += '</div>';
+                    }
+
+                    body.innerHTML = html;
+                });
+
+            // Load recent feedback entries
+            loadFeedbackList();
+        }
+
+        function buildStatCard(value, label, color) {
+            return `<div class="stat-card" style="border-color:${color}33;">
+                <div class="value" style="color:${color};">${value}</div>
+                <div class="label">${label}</div>
+            </div>`;
+        }
+
+        function loadFeedbackList(rating) {
+            const url = '/api/feedback' + (rating ? '?rating=' + rating + '&' : '?') + 'limit=50';
+            fetch(url)
+                .then(r => r.json())
+                .then(entries => {
+                    const body = document.getElementById('fbListBody');
+                    if (!body) return;
+
+                    if (entries.length === 0) {
+                        body.innerHTML = '<div style="color:#484f58;text-align:center;padding:24px;">No feedback entries</div>';
+                        return;
+                    }
+
+                    body.innerHTML = entries.map(fb => {
+                        const ratingColors = {correct:'#3fb950', wrong:'#f85149', partial:'#d29922', unsure:'#58a6ff'};
+                        const rColor = ratingColors[fb.rating] || '#8b949e';
+                        const date = new Date(fb.created_at * 1000).toLocaleString();
+                        const tags = fb.tags ? JSON.parse(fb.tags) : [];
+                        const tagsHtml = tags.map(t => `<span class="issue-tag cat">${t}</span>`).join('');
+
+                        return `<div class="issue-item" onclick="traceIssue('${(fb.building_id||'').replace(/'/g, "\\'")}')">
+                            <div class="issue-icon" style="background:${rColor}22;color:${rColor};">
+                                ${fb.rating === 'correct' ? '✓' : fb.rating === 'wrong' ? '✗' : fb.rating === 'partial' ? '~' : '?'}
+                            </div>
+                            <div class="issue-content">
+                                <div class="issue-title" style="color:${rColor};">${fb.rating.toUpperCase()}: ${fb.building_name || fb.building_id}</div>
+                                ${fb.issue_category ? `<div class="issue-desc">${fb.issue_category}${fb.issue_title ? ' — ' + fb.issue_title : ''}</div>` : ''}
+                                ${fb.comment ? `<div style="color:#c9d1d9;font-size:12px;margin-top:4px;">"${fb.comment}"</div>` : ''}
+                                ${fb.actual_cause ? `<div style="color:#58a6ff;font-size:11px;margin-top:2px;">Actual cause: ${fb.actual_cause}</div>` : ''}
+                                <div class="issue-meta">
+                                    ${tagsHtml}
+                                    <span style="color:#484f58;">${date}</span>
+                                    ${fb.recipe ? `<span class="issue-tag cat">${fb.recipe}</span>` : ''}
+                                </div>
+                                ${fb.building_id ? `<button class="filter-btn" onclick="event.stopPropagation();traceIssue('${(fb.building_id||'').replace(/'/g, "\\'")}')" style="color:#39c5cf;margin-top:4px;">Trace on Map</button>` : ''}
+                            </div>
+                        </div>`;
+                    }).join('');
+                });
+        }
+
+        function filterFeedback(rating, btn) {
+            btn.parentElement.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            loadFeedbackList(rating === 'all' ? null : rating);
+        }
+
+        // Load feedback count on page load
+        updateFeedbackCount();
+
+        function buildTraceNodeHTML(nid, n, cls) {
+            // Check if this node has an issue
+            const issue = issuesData.find(i => i.building_id === nid);
+            const issueHTML = issue
+                ? `<div class="tn-issue" style="color:${issue.severity === 'error' ? '#f85149' : issue.severity === 'warning' ? '#d29922' : '#58a6ff'}">${issue.category}: ${issue.title}</div>`
+                : '';
+
+            // Compute performance border color (matches map node color)
+            let borderColor = cls === 'origin' ? '#39c5cf' : cls === 'upstream' ? '#58a6ff' : '#d29922';
+            if (n.cat === 'logistics') {
+                borderColor = '#8b949e';
+            } else if (n.cat === 'miner') {
+                borderColor = '#3fb950';
+            } else if (n.expected_in > 0) {
+                const suff = n.avail_in / n.expected_in;
+                borderColor = perfColor(1 - Math.min(suff, 1));
+            }
+
+            // Sufficiency bar
+            let flowHTML = '';
+            if (n.expected_in > 0) {
+                const suff = n.avail_in / n.expected_in;
+                const pct = Math.min(suff * 100, 100).toFixed(0);
+                const barColor = perfColor(1 - Math.min(suff, 1));
+                flowHTML = `<div class="tn-flow">
+                    <span>In: <span class="val">${n.avail_in}/${n.expected_in}/min</span> (${pct}%)</span>
+                    <div style="flex:1;height:4px;background:#21262d;border-radius:2px;align-self:center;">
+                        <div style="width:${pct}%;height:100%;background:${barColor};border-radius:2px;"></div>
+                    </div>
+                </div>`;
+            }
+            if (n.expected_out > 0) {
+                flowHTML += `<div class="tn-flow"><span>Out: <span class="val">${n.avail_out}/${n.expected_out}/min</span></span></div>`;
+            }
+
+            return `<div class="trace-node ${cls}" style="border-left-color:${borderColor}" onclick="panToBuilding('${nid.replace(/'/g, "\\'")}')">
+                <div class="tn-name">${n.name} <span style="color:#484f58;font-weight:400;font-size:11px;">${n.clock}%</span></div>
+                ${n.recipe ? '<div class="tn-recipe">' + n.recipe + '</div>' : ''}
+                ${flowHTML}
+                ${issueHTML}
+            </div>`;
+        }
+
+        function panToBuilding(buildingId) {
+            if (!mapData) return;
+            const b = mapData.buildings.find(x => x.id === buildingId);
+            if (b) {
+                cam.x = b.x;
+                cam.y = b.y;
+                drawMap();
+            }
+        }
+
+        function updateTraceStep() {
+            if (!traceLayers.length) return;
+            const info = document.getElementById('traceStepInfo');
+            if (traceStep === -1) {
+                info.textContent = 'All ' + traceData.node_ids.length + ' nodes';
+            } else {
+                const step = Math.min(traceStep, traceLayers.length - 1);
+                const layer = traceLayers[step];
+                info.textContent = `Layer ${step + 1}/${traceLayers.length} (${layer.dir})`;
+            }
+            drawMap();
+        }
+
+        function stepTrace(delta) {
+            if (!traceLayers.length) return;
+            traceStep += delta;
+            if (traceStep < -1) traceStep = -1;
+            if (traceStep >= traceLayers.length) traceStep = traceLayers.length - 1;
+            updateTraceStep();
+
+            // Pan to center of current layer
+            if (traceStep >= 0 && traceStep < traceLayers.length) {
+                const layerIds = traceLayers[traceStep].ids;
+                const blds = layerIds.map(id => mapData.buildings.find(b => b.id === id)).filter(Boolean);
+                if (blds.length) {
+                    const cx = blds.reduce((s, b) => s + b.x, 0) / blds.length;
+                    const cy = blds.reduce((s, b) => s + b.y, 0) / blds.length;
+                    cam.x = cx;
+                    cam.y = cy;
+                    drawMap();
+                }
+            }
+        }
+
+        function clearTrace() {
+            traceData = null;
+            traceNodeSet = null;
+            traceEdgeSet = null;
+            traceEdgeFlow = null;
+            traceLayers = [];
+            traceStep = -1;
+            traceOriginId = null;
+            document.getElementById('traceControls').style.display = 'none';
+            document.getElementById('tracePerfLegend').style.display = 'none';
+            document.getElementById('tracePanel').style.display = 'none';
+            drawMap();
+        }
+
+        // Called from issue items — traces the building on the map
+        function traceIssue(buildingId) {
+            if (!buildingId) return;
+            // Switch to map tab
+            const mapBtn = document.querySelector("button[onclick*=\"switchTab('map\"]");
+            if (mapBtn) {
+                switchTab('map', mapBtn);
+                initMap();
+            }
+            // Wait for map data to load, then trace
+            const doTrace = () => {
+                if (mapData) {
+                    traceBuilding(buildingId);
+                } else {
+                    setTimeout(doTrace, 200);
+                }
+            };
+            doTrace();
+        }
+
+        /* ═══ FACTORY MAP ═══ */
+        let mapData = null;
+        let mapInited = false;
+        let cam = { x: 0, y: 0, zoom: 1 };
+        let dragging = false, dragStart = { x: 0, y: 0 }, camStart = { x: 0, y: 0 };
+        let didDrag = false; // distinguish click from drag
+
+        function initMap() {
+            if (mapInited) return;
+            mapInited = true;
+            const canvas = document.getElementById('mapCanvas');
+            const h = Math.max(600, window.innerHeight - 280);
+            canvas.style.height = h + 'px';
+            canvas.width = canvas.offsetWidth * 2;
+            canvas.height = h * 2;
+
+            fetch('/api/map_data')
+                .then(r => r.json())
+                .then(data => {
+                    mapData = data;
+                    // Build ID lookup for fast access
+                    mapData.buildingById = {};
+                    for (const b of data.buildings) {
+                        mapData.buildingById[b.id] = b;
+                    }
+                    // Fit view to data bounds
+                    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                    for (const b of data.buildings) {
+                        minX = Math.min(minX, b.x); maxX = Math.max(maxX, b.x);
+                        minY = Math.min(minY, b.y); maxY = Math.max(maxY, b.y);
+                    }
+                    const spanX = maxX - minX || 1, spanY = maxY - minY || 1;
+                    const margin = 0.05;
+                    cam.x = (minX + maxX) / 2;
+                    cam.y = (minY + maxY) / 2;
+                    cam.zoom = Math.min(
+                        canvas.width / (spanX * (1 + margin * 2)),
+                        canvas.height / (spanY * (1 + margin * 2))
+                    );
+                    drawMap();
+                    document.getElementById('mapInfo').textContent =
+                        data.buildings.length + ' buildings, ' + data.edges.length + ' connections | Click a building to trace';
+                    loadDistricts();
+                });
+
+            // Mouse events
+            canvas.addEventListener('wheel', e => {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const mx = (e.clientX - rect.left) / rect.width * canvas.width;
+                const my = (e.clientY - rect.top) / rect.height * canvas.height;
+                const wx = cam.x + (mx - canvas.width / 2) / cam.zoom;
+                const wy = cam.y + (my - canvas.height / 2) / cam.zoom;
+                const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+                cam.zoom *= factor;
+                cam.zoom = Math.max(0.0001, Math.min(cam.zoom, 1));
+                cam.x = wx - (mx - canvas.width / 2) / cam.zoom;
+                cam.y = wy - (my - canvas.height / 2) / cam.zoom;
+                drawMap();
+            }, { passive: false });
+
+            canvas.addEventListener('mousedown', e => {
+                dragging = true;
+                didDrag = false;
+                dragStart = { x: e.clientX, y: e.clientY };
+                camStart = { x: cam.x, y: cam.y };
+                canvas.style.cursor = 'grabbing';
+            });
+
+            window.addEventListener('mousemove', e => {
+                if (dragging) {
+                    const dx = e.clientX - dragStart.x;
+                    const dy = e.clientY - dragStart.y;
+                    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didDrag = true;
+                    const rect = canvas.getBoundingClientRect();
+                    const scale = canvas.width / rect.width;
+                    cam.x = camStart.x - dx * scale / cam.zoom;
+                    cam.y = camStart.y - dy * scale / cam.zoom;
+                    drawMap();
+                } else if (mapData) {
+                    handleMapHover(e);
+                }
+            });
+
+            window.addEventListener('mouseup', e => {
+                const wasDragging = dragging;
+                dragging = false;
+                const canvas = document.getElementById('mapCanvas');
+                if (canvas) canvas.style.cursor = 'grab';
+
+                // Click detection: if we didn't drag, treat as click
+                if (wasDragging && !didDrag && mapData) {
+                    handleMapClick(e);
+                }
+            });
+        }
+
+        function worldToScreen(wx, wy) {
+            const canvas = document.getElementById('mapCanvas');
+            return {
+                x: canvas.width / 2 + (wx - cam.x) * cam.zoom,
+                y: canvas.height / 2 + (wy - cam.y) * cam.zoom
+            };
+        }
+
+        function findNearestBuilding(e) {
+            const canvas = document.getElementById('mapCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const mx = (e.clientX - rect.left) / rect.width * canvas.width;
+            const my = (e.clientY - rect.top) / rect.height * canvas.height;
+            let best = null, bestDist = 600;
+            for (const b of mapData.buildings) {
+                const s = worldToScreen(b.x, b.y);
+                const dx = s.x - mx, dy = s.y - my;
+                const d = dx * dx + dy * dy;
+                if (d < bestDist) { bestDist = d; best = b; }
+            }
+            return best;
+        }
+
+        function handleMapClick(e) {
+            // Lasso mode: add point to polygon
+            if (lassoMode) {
+                const canvas = document.getElementById('mapCanvas');
+                const rect = canvas.getBoundingClientRect();
+                const mx = (e.clientX - rect.left) / rect.width * canvas.width;
+                const my = (e.clientY - rect.top) / rect.height * canvas.height;
+                const w = screenToWorld(mx, my);
+                lassoPoints.push(w);
+
+                const status = document.getElementById('lassoStatus');
+                status.textContent = `${lassoPoints.length} points. Right-click to close polygon.`;
+
+                if (lassoPoints.length >= 3) {
+                    document.getElementById('lassoSaveBtn').style.display = '';
+                }
+                drawMap();
+                return;
+            }
+
+            const best = findNearestBuilding(e);
+            if (best && best.id) {
+                traceBuilding(best.id);
+            }
+        }
+
+        function isNodeInCurrentTrace(nodeId) {
+            if (!traceNodeSet) return false;
+            if (traceStep === -1) return traceNodeSet.has(nodeId); // show all
+            // Show nodes up to current layer
+            let visible = new Set();
+            for (let i = 0; i <= Math.min(traceStep, traceLayers.length - 1); i++) {
+                for (const id of traceLayers[i].ids) visible.add(id);
+            }
+            return visible.has(nodeId);
+        }
+
+        function isEdgeInCurrentTrace(srcId, dstId) {
+            if (!traceEdgeSet) return false;
+            const key = srcId + '|' + dstId;
+            if (!traceEdgeSet.has(key)) return false;
+            if (traceStep === -1) return true;
+            // Both endpoints must be visible
+            return isNodeInCurrentTrace(srcId) && isNodeInCurrentTrace(dstId);
+        }
+
+        /**
+         * Performance color gradient:
+         *   ratio 0.0 → green (#3fb950)  healthy / no flow
+         *   ratio 0.7 → yellow (#d29922) moderate load
+         *   ratio 0.95+ → red (#f85149)  bottleneck / saturated
+         * Returns CSS color string.
+         */
+        function perfColor(ratio) {
+            ratio = Math.max(0, Math.min(ratio, 1));
+            if (ratio < 0.7) {
+                // green → yellow   (0..0.7)
+                const t = ratio / 0.7;
+                const r = Math.round(63 + t * (210 - 63));
+                const g = Math.round(185 + t * (153 - 185));
+                const b = Math.round(80 + t * (34 - 80));
+                return `rgb(${r},${g},${b})`;
+            } else {
+                // yellow → red     (0.7..1.0)
+                const t = (ratio - 0.7) / 0.3;
+                const r = Math.round(210 + t * (248 - 210));
+                const g = Math.round(153 - t * (153 - 81));
+                const b = Math.round(34 + t * (73 - 34));
+                return `rgb(${r},${g},${b})`;
+            }
+        }
+
+        /** Get edge performance color from traceEdgeFlow map */
+        function getEdgePerfColor(srcId, dstId) {
+            if (!traceEdgeFlow) return '#39c5cf';
+            const info = traceEdgeFlow.get(srcId + '|' + dstId);
+            if (!info) return '#39c5cf';
+            // No flow at all → dim gray (disconnected/unused)
+            if (info.flow_rate <= 0 && info.max_rate > 0) return '#484f58';
+            return perfColor(info.util);
+        }
+
+        function getBuildingColor(b, isTrace, isOrigin) {
+            if (isOrigin) return '#39c5cf';
+            if (isTrace && traceData && traceData.node_info) {
+                // Performance-based coloring: use input sufficiency for production nodes
+                const ni = traceData.node_info[b.id];
+                if (ni) {
+                    if (ni.cat === 'logistics') {
+                        // Logistics: color by passthrough (avail_in vs avail_out)
+                        return '#8b949e';
+                    }
+                    if (ni.cat === 'miner') {
+                        // Miners always fully supplied (they produce), color green
+                        return '#3fb950';
+                    }
+                    if (ni.expected_in > 0) {
+                        // Production / generator: color by input sufficiency
+                        const suff = ni.avail_in / ni.expected_in;
+                        return perfColor(1 - Math.min(suff, 1)); // invert: low supply = red
+                    }
+                    if (ni.expected_out > 0 && ni.producing) {
+                        return '#3fb950'; // producing with no required inputs → healthy
+                    }
+                }
+                // Fallback: direction-based (upstream blue, downstream orange)
+                if (traceData.upstream_ids && traceData.upstream_ids.includes(b.id)) return '#58a6ff';
+                if (traceData.downstream_ids && traceData.downstream_ids.includes(b.id)) return '#d29922';
+                return '#39c5cf';
+            }
+            if (b.sev === 'error') return '#f85149';
+            if (b.sev === 'warning') return '#d29922';
+            if (b.cat === 'miner') return '#58a6ff';
+            if (b.cat === 'generator') return '#a371f7';
+            if (b.cat === 'logistics') return '#484f58';
+            if (b.cat === 'storage') return '#30363d';
+            if (b.prod) return '#3fb950';
+            return '#484f58';
+        }
+
+        function getBuildingRadius(b) {
+            if (b.cat === 'logistics') return 2;
+            if (b.cat === 'storage') return 3;
+            if (b.cat === 'miner') return 5;
+            if (b.cat === 'generator') return 4;
+            return 4;
+        }
+
+        function drawMap() {
+            if (!mapData) return;
+            const canvas = document.getElementById('mapCanvas');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width, h = canvas.height;
+            const isTracing = traceNodeSet !== null;
+
+            ctx.fillStyle = '#0a0e14';
+            ctx.fillRect(0, 0, w, h);
+
+            // Grid lines
+            const gridStep = 10000;
+            ctx.strokeStyle = '#161b22';
+            ctx.lineWidth = 1;
+            const topLeft = { x: cam.x - w / 2 / cam.zoom, y: cam.y - h / 2 / cam.zoom };
+            const bottomRight = { x: cam.x + w / 2 / cam.zoom, y: cam.y + h / 2 / cam.zoom };
+            const gx0 = Math.floor(topLeft.x / gridStep) * gridStep;
+            const gy0 = Math.floor(topLeft.y / gridStep) * gridStep;
+            for (let gx = gx0; gx <= bottomRight.x; gx += gridStep) {
+                const s = worldToScreen(gx, 0);
+                ctx.beginPath(); ctx.moveTo(s.x, 0); ctx.lineTo(s.x, h); ctx.stroke();
+            }
+            for (let gy = gy0; gy <= bottomRight.y; gy += gridStep) {
+                const s = worldToScreen(0, gy);
+                ctx.beginPath(); ctx.moveTo(0, s.y); ctx.lineTo(w, s.y); ctx.stroke();
+            }
+
+            // District overlay (behind everything)
+            drawDistricts(ctx, w, h);
+
+            const showEdges = document.getElementById('mapShowEdges').checked;
+            const showOk = document.getElementById('mapShowOk').checked;
+            const showWarn = document.getElementById('mapShowWarn').checked;
+            const showErr = document.getElementById('mapShowErr').checked;
+            const showLogistics = document.getElementById('mapShowLogistics').checked;
+
+            // ── Draw non-trace edges (thicker, more visible) ──
+            if (showEdges) {
+                ctx.globalAlpha = isTracing ? 0.12 : 0.5;
+                ctx.strokeStyle = '#2a3040';
+                ctx.lineWidth = isTracing ? 1 : 2;
+                ctx.beginPath();
+                for (const e of mapData.edges) {
+                    if (isTracing && isEdgeInCurrentTrace(e.src, e.dst)) continue;
+                    const a = worldToScreen(e.x1, e.y1);
+                    const b = worldToScreen(e.x2, e.y2);
+                    if (a.x < -50 || a.x > w + 50 || a.y < -50 || a.y > h + 50) {
+                        if (b.x < -50 || b.x > w + 50 || b.y < -50 || b.y > h + 50) continue;
+                    }
+                    ctx.moveTo(a.x, a.y);
+                    ctx.lineTo(b.x, b.y);
+                }
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+            }
+
+            // ── Draw TRACED edges (colored by belt utilization) ──
+            if (isTracing) {
+                ctx.lineCap = 'round';
+                for (const e of mapData.edges) {
+                    if (!isEdgeInCurrentTrace(e.src, e.dst)) continue;
+                    const a = worldToScreen(e.x1, e.y1);
+                    const b = worldToScreen(e.x2, e.y2);
+                    const edgeColor = getEdgePerfColor(e.src, e.dst);
+
+                    // Glow pass
+                    ctx.globalAlpha = 0.3;
+                    ctx.strokeStyle = edgeColor;
+                    ctx.lineWidth = 8;
+                    ctx.beginPath();
+                    ctx.moveTo(a.x, a.y);
+                    ctx.lineTo(b.x, b.y);
+                    ctx.stroke();
+
+                    // Solid pass
+                    ctx.globalAlpha = 0.9;
+                    ctx.strokeStyle = edgeColor;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(a.x, a.y);
+                    ctx.lineTo(b.x, b.y);
+                    ctx.stroke();
+                }
+                ctx.globalAlpha = 1;
+                ctx.lineCap = 'butt';
+
+                // Draw arrowheads on traced edges (colored to match)
+                ctx.globalAlpha = 0.8;
+                for (const e of mapData.edges) {
+                    if (!isEdgeInCurrentTrace(e.src, e.dst)) continue;
+                    const a = worldToScreen(e.x1, e.y1);
+                    const b = worldToScreen(e.x2, e.y2);
+                    const dx = b.x - a.x, dy = b.y - a.y;
+                    const len = Math.sqrt(dx * dx + dy * dy);
+                    if (len < 15) continue;
+                    const ux = dx / len, uy = dy / len;
+                    // Arrow at 70% along the edge
+                    const px = a.x + dx * 0.7, py = a.y + dy * 0.7;
+                    const sz = 6;
+                    ctx.fillStyle = getEdgePerfColor(e.src, e.dst);
+                    ctx.beginPath();
+                    ctx.moveTo(px + ux * sz, py + uy * sz);
+                    ctx.lineTo(px - ux * sz / 2 + uy * sz, py - uy * sz / 2 - ux * sz);
+                    ctx.lineTo(px - ux * sz / 2 - uy * sz, py - uy * sz / 2 + ux * sz);
+                    ctx.fill();
+                }
+                ctx.globalAlpha = 1;
+            }
+
+            // ── Draw buildings ──
+            for (const b of mapData.buildings) {
+                // Filter
+                if (b.cat === 'logistics' && !showLogistics && !(isTracing && isNodeInCurrentTrace(b.id))) continue;
+                if (!b.sev && b.prod && !showOk && !(isTracing && isNodeInCurrentTrace(b.id))) continue;
+                if (b.sev === 'warning' && !showWarn && !(isTracing && isNodeInCurrentTrace(b.id))) continue;
+                if (b.sev === 'error' && !showErr && !(isTracing && isNodeInCurrentTrace(b.id))) continue;
+
+                const inTrace = isTracing && isNodeInCurrentTrace(b.id);
+                const isOrigin = b.id === traceOriginId;
+
+                // Dim non-trace buildings when tracing
+                if (isTracing && !inTrace) {
+                    ctx.globalAlpha = 0.15;
+                } else {
+                    ctx.globalAlpha = 1.0;
+                }
+
+                const s = worldToScreen(b.x, b.y);
+                if (s.x < -20 || s.x > w + 20 || s.y < -20 || s.y > h + 20) continue;
+
+                const baseR = getBuildingRadius(b);
+                const r = baseR * Math.min(Math.max(cam.zoom * 200, 0.8), 3);
+                const traceR = inTrace ? r * 1.5 : r;
+                const color = getBuildingColor(b, inTrace, isOrigin);
+
+                ctx.beginPath();
+                if (b.cat === 'logistics' && !inTrace) {
+                    ctx.rect(s.x - traceR / 2, s.y - traceR / 2, traceR, traceR);
+                } else {
+                    ctx.arc(s.x, s.y, traceR, 0, Math.PI * 2);
+                }
+                ctx.fillStyle = color;
+                ctx.fill();
+
+                // Glow ring for issue buildings
+                if (b.sev === 'error' && !isTracing) {
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, traceR + 3, 0, Math.PI * 2);
+                    ctx.strokeStyle = '#f8514966';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
+                // Trace highlight rings
+                if (inTrace) {
+                    // Outer glow
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, traceR + 4, 0, Math.PI * 2);
+                    ctx.strokeStyle = color + '55';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+
+                    // Origin gets double ring
+                    if (isOrigin) {
+                        ctx.beginPath();
+                        ctx.arc(s.x, s.y, traceR + 8, 0, Math.PI * 2);
+                        ctx.strokeStyle = '#39c5cf88';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
+
+                    // Show issue indicator on traced nodes
+                    if (b.sev === 'error') {
+                        ctx.beginPath();
+                        ctx.arc(s.x + traceR, s.y - traceR, 4, 0, Math.PI * 2);
+                        ctx.fillStyle = '#f85149';
+                        ctx.fill();
+                    } else if (b.sev === 'warning') {
+                        ctx.beginPath();
+                        ctx.arc(s.x + traceR, s.y - traceR, 4, 0, Math.PI * 2);
+                        ctx.fillStyle = '#d29922';
+                        ctx.fill();
+                    }
+                }
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        /* ═══ DISTRICT OVERLAY ═══ */
+        let districtData = null;
+        const districtColors = [
+            '#58a6ff','#a371f7','#3fb950','#d29922','#f85149','#39c5cf',
+            '#f778ba','#7ee787','#d2a8ff','#ffa657','#79c0ff','#ff7b72',
+            '#56d4dd','#e3b341','#bc8cff','#ffc680','#7ee7bb','#ff9bce',
+        ];
+
+        function loadDistricts() {
+            fetch('/api/districts')
+                .then(r => r.json())
+                .then(data => {
+                    districtData = data;
+                    if (mapData) drawMap();
+                });
+        }
+
+        function drawDistricts(ctx, w, h) {
+            if (!districtData || !mapData) return;
+            const showDistricts = document.getElementById('mapShowDistricts').checked;
+            if (!showDistricts) return;
+
+            for (let i = 0; i < districtData.length; i++) {
+                const d = districtData[i];
+                if (d.total_machines < 3) continue;
+                const color = districtColors[i % districtColors.length];
+
+                // Collect screen positions of district nodes
+                const pts = [];
+                for (const nid of d.node_ids) {
+                    const b = mapData.buildingById[nid];
+                    if (!b) continue;
+                    const s = worldToScreen(b.x, b.y);
+                    if (s.x > -200 && s.x < w + 200 && s.y > -200 && s.y < h + 200) {
+                        pts.push(s);
+                    }
+                }
+                if (pts.length < 2) continue;
+
+                // Draw bounding ellipse
+                let cx = 0, cy = 0;
+                for (const p of pts) { cx += p.x; cy += p.y; }
+                cx /= pts.length; cy /= pts.length;
+                let maxR = 0;
+                for (const p of pts) {
+                    const dx = p.x - cx, dy = p.y - cy;
+                    maxR = Math.max(maxR, Math.sqrt(dx*dx + dy*dy));
+                }
+                maxR = Math.max(maxR + 20, 30);
+
+                ctx.globalAlpha = 0.08;
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(cx, cy, maxR, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.globalAlpha = 0.3;
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([6, 4]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Label
+                ctx.globalAlpha = 0.7;
+                ctx.fillStyle = color;
+                ctx.font = '11px Segoe UI, system-ui, sans-serif';
+                ctx.textAlign = 'center';
+                const label = d.name.length > 30 ? d.name.slice(0, 28) + '..' : d.name;
+                ctx.fillText(label + ' (' + d.total_machines + ')', cx, cy - maxR - 6);
+                if (d.efficiency > 0) {
+                    ctx.fillText(d.efficiency.toFixed(0) + '% eff', cx, cy - maxR + 6);
+                }
+                ctx.textAlign = 'left';
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        function handleMapHover(e) {
+            const canvas = document.getElementById('mapCanvas');
+            const tooltip = document.getElementById('mapTooltip');
+            const best = findNearestBuilding(e);
+
+            if (best) {
+                const rect = canvas.getBoundingClientRect();
+                const inTrace = traceNodeSet && traceNodeSet.has(best.id);
+                const isOrigin = best.id === traceOriginId;
+                const color = getBuildingColor(best, inTrace, isOrigin);
+                const sevColor = best.sev === 'error' ? '#f85149' : best.sev === 'warning' ? '#d29922' : '#3fb950';
+
+                let html = `<div style="color:${color};font-weight:600;">${best.name}</div>`;
+                if (best.recipe) html += `<div style="color:#c9d1d9;font-size:11px;">${best.recipe}</div>`;
+                html += `<div style="color:#8b949e;font-size:11px;">Clock: ${best.clock}% | ${best.prod ? 'Running' : 'Idle'}</div>`;
+                if (best.issue) html += `<div style="color:${sevColor};font-size:11px;margin-top:2px;">${best.issue}</div>`;
+
+                // Show trace info
+                if (inTrace && traceData && traceData.node_info[best.id]) {
+                    const n = traceData.node_info[best.id];
+                    if (n.expected_in > 0) {
+                        const suff = (n.avail_in / n.expected_in * 100).toFixed(0);
+                        html += `<div style="color:#8b949e;font-size:11px;margin-top:2px;">Input: ${n.avail_in}/${n.expected_in}/min (${suff}%)</div>`;
+                    }
+                    if (n.expected_out > 0) {
+                        html += `<div style="color:#8b949e;font-size:11px;">Output: ${n.avail_out}/${n.expected_out}/min</div>`;
+                    }
+                }
+
+                html += `<div style="color:#484f58;font-size:10px;margin-top:3px;">Click to trace supply chain</div>`;
+
+                tooltip.innerHTML = html;
+                tooltip.style.display = 'block';
+                tooltip.style.left = Math.min(e.clientX - rect.left + 12, rect.width - 310) + 'px';
+                tooltip.style.top = (e.clientY - rect.top + 12) + 'px';
+                canvas.style.cursor = 'pointer';
+            } else {
+                tooltip.style.display = 'none';
+                if (!dragging) {
+                    const canvas = document.getElementById('mapCanvas');
+                    canvas.style.cursor = 'grab';
+                }
+            }
+        }
+        /* ═══ MANIFOLD BLOCKS ═══ */
+        function loadManifolds() {
+            fetch('/api/manifolds')
+                .then(r => r.json())
+                .then(blocks => {
+                    const badge = document.getElementById('manifoldBadge');
+                    const body = document.getElementById('manifoldBody');
+                    if (!body) return;
+
+                    badge.textContent = blocks.length;
+
+                    if (blocks.length === 0) {
+                        body.innerHTML = '<div style="color:#484f58;text-align:center;padding:24px;">No manifold blocks detected (need 2+ identical machines with same connections)</div>';
+                        return;
+                    }
+
+                    body.innerHTML = blocks.map(b => {
+                        const oeeColor = b.oee >= 90 ? '#3fb950' : b.oee >= 60 ? '#d29922' : '#f85149';
+                        const pct = Math.min(b.oee, 100);
+                        return `<div class="bottleneck-row" style="cursor:pointer;" onclick="traceIssue('${(b.node_ids[0]||'').replace(/'/g, "\\'")}')">
+                            <span class="belt-tier" style="color:${oeeColor};">${b.count}x</span>
+                            <div class="flow-bar-bg" style="flex:0 0 80px;">
+                                <div class="flow-bar ${b.oee >= 90 ? 'ok' : b.oee >= 60 ? 'warn' : 'crit'}" style="width:${pct}%"></div>
+                            </div>
+                            <div class="bottleneck-info">
+                                <strong style="color:#c9d1d9;">${b.recipe_name}</strong>
+                                <span style="color:#484f58;"> (${b.building_name})</span>
+                                <div style="font-size:11px;color:#8b949e;">Clock: ${b.avg_clock}% | ${b.producing_count}/${b.count} producing</div>
+                            </div>
+                            <div class="bottleneck-rate">
+                                <span style="color:${oeeColor};font-weight:600;">${b.oee.toFixed(0)}% OEE</span>
+                                <div style="font-size:10px;color:#484f58;">${b.total_actual_output.toFixed(0)}/${b.total_expected_output.toFixed(0)}/min</div>
+                            </div>
+                        </div>`;
+                    }).join('');
+                });
+        }
+
+        // Load manifolds on page load
+        loadManifolds();
+
+        /* ═══ TICKETS SYSTEM ═══ */
+        let ticketsLoaded = false;
+
+        function loadTickets() {
+            ticketsLoaded = true;
+            // Load stats
+            fetch('/api/tickets/stats')
+                .then(r => r.json())
+                .then(stats => {
+                    const body = document.getElementById('ticketStatsBody');
+                    if (!body) return;
+
+                    const countBadge = document.getElementById('ticketCount');
+                    const open = (stats.statuses || {}).OPEN || 0;
+                    const inProg = (stats.statuses || {}).IN_PROGRESS || 0;
+                    if (countBadge) countBadge.textContent = open + inProg;
+
+                    if (!stats.total) {
+                        body.innerHTML = '<div style="color:#484f58;text-align:center;padding:24px;">No tickets yet. Upload a save to generate tickets from issues.</div>';
+                        return;
+                    }
+
+                    let html = '<div class="fb-stat-grid">';
+                    html += buildStatCard(open, 'Open', '#f85149');
+                    html += buildStatCard(inProg, 'In Progress', '#d29922');
+                    html += buildStatCard((stats.statuses || {}).RESOLVED || 0, 'Resolved', '#3fb950');
+                    html += buildStatCard((stats.statuses || {}).WONT_FIX || 0, "Won't Fix", '#8b949e');
+                    html += '</div>';
+
+                    html += `<div style="text-align:center;margin:12px 0;">
+                        <div style="font-size:20px;font-weight:700;color:#FFD700;">${stats.avg_priority}</div>
+                        <div style="font-size:11px;color:#8b949e;">Avg Priority Score</div>
+                    </div>`;
+
+                    // Open by category
+                    if (stats.open_categories && Object.keys(stats.open_categories).length) {
+                        html += '<div style="margin-top:12px;">';
+                        html += '<div style="font-size:11px;color:#8b949e;font-weight:600;margin-bottom:6px;">Open by Category</div>';
+                        for (const [cat, cnt] of Object.entries(stats.open_categories)) {
+                            html += `<div style="display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;">
+                                <span style="flex:1;color:#c9d1d9;">${cat}</span>
+                                <span style="color:#f85149;font-weight:600;">${cnt}</span>
+                            </div>`;
+                        }
+                        html += '</div>';
+                    }
+
+                    body.innerHTML = html;
+                });
+
+            loadTicketList();
+        }
+
+        function loadTicketList(status) {
+            const url = '/api/tickets' + (status ? '?status=' + status + '&' : '?') + 'limit=100';
+            fetch(url)
+                .then(r => r.json())
+                .then(tickets => {
+                    const body = document.getElementById('ticketListBody');
+                    const badge = document.getElementById('ticketListBadge');
+                    if (!body) return;
+                    if (badge) badge.textContent = tickets.length;
+
+                    if (tickets.length === 0) {
+                        body.innerHTML = '<div style="color:#484f58;text-align:center;padding:24px;">No tickets match filter</div>';
+                        return;
+                    }
+
+                    body.innerHTML = tickets.map(t => {
+                        const statusColors = {OPEN:'#f85149', IN_PROGRESS:'#d29922', RESOLVED:'#3fb950', WONT_FIX:'#8b949e'};
+                        const sColor = statusColors[t.status] || '#8b949e';
+                        const sevColors = {error:'#f85149', warning:'#d29922', info:'#58a6ff'};
+                        const sevColor = sevColors[t.issue_severity] || '#8b949e';
+                        const date = new Date(t.created_at * 1000).toLocaleDateString();
+
+                        return `<div class="issue-item" onclick="traceIssue('${(t.building_id||'').replace(/'/g, "\\'")}')">
+                            <div class="issue-icon" style="background:${sColor}22;color:${sColor};font-size:9px;">P${t.priority}</div>
+                            <div class="issue-content">
+                                <div class="issue-title">
+                                    <span style="color:${sColor};font-size:10px;font-weight:600;padding:1px 6px;border:1px solid ${sColor}44;border-radius:3px;margin-right:6px;">${t.status}</span>
+                                    ${t.issue_title}
+                                </div>
+                                <div class="issue-desc">${t.building_name || ''} ${t.recipe ? '• ' + t.recipe : ''}</div>
+                                <div class="issue-meta">
+                                    <span class="issue-tag ${t.issue_severity || ''}">${t.issue_category}</span>
+                                    ${t.items_per_min_lost > 0 ? '<span class="issue-tag warning">-' + t.items_per_min_lost.toFixed(0) + ' items/min</span>' : ''}
+                                    ${t.dominator_id ? '<span class="issue-tag cat">has dominator</span>' : ''}
+                                    ${t.auto_resolved ? '<span class="issue-tag info">auto-resolved</span>' : ''}
+                                    ${t.assigned_to ? '<span style="color:#a371f7;font-size:10px;">@' + t.assigned_to + '</span>' : ''}
+                                    <span style="color:#484f58;">${date}</span>
+                                </div>
+                                <div style="margin-top:4px;">
+                                    ${t.status === 'OPEN' ? `<button class="filter-btn" onclick="event.stopPropagation();updateTicketStatus(${t.id},'IN_PROGRESS')" style="color:#d29922;">Start</button>` : ''}
+                                    ${t.status === 'IN_PROGRESS' ? `<button class="filter-btn" onclick="event.stopPropagation();updateTicketStatus(${t.id},'RESOLVED')" style="color:#3fb950;">Resolve</button>` : ''}
+                                    ${t.status !== 'WONT_FIX' && t.status !== 'RESOLVED' ? `<button class="filter-btn" onclick="event.stopPropagation();updateTicketStatus(${t.id},'WONT_FIX')" style="color:#8b949e;">Won't Fix</button>` : ''}
+                                    <button class="filter-btn" onclick="event.stopPropagation();traceIssue('${(t.building_id||'').replace(/'/g, "\\'")}')" style="color:#39c5cf;">Trace</button>
+                                    <button class="filter-btn" onclick="event.stopPropagation();exportSubgraph('${(t.building_id||'').replace(/'/g, "\\'")}', ${t.id})" style="color:#a371f7;">Report</button>
+                                </div>
+                            </div>
+                        </div>`;
+                    }).join('');
+                });
+        }
+
+        function filterTickets(status, btn) {
+            btn.parentElement.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            loadTicketList(status === 'all' ? null : status);
+        }
+
+        function updateTicketStatus(ticketId, newStatus) {
+            fetch('/api/tickets/' + ticketId, {
+                method: 'PATCH',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({status: newStatus}),
+            })
+            .then(r => r.json())
+            .then(() => {
+                loadTickets(); // Refresh both stats and list
+            });
+        }
+
+        // Load ticket count on page load
+        fetch('/api/tickets/stats')
+            .then(r => r.json())
+            .then(stats => {
+                const badge = document.getElementById('ticketCount');
+                const open = (stats.statuses || {}).OPEN || 0;
+                const inProg = (stats.statuses || {}).IN_PROGRESS || 0;
+                if (badge) badge.textContent = open + inProg;
+            })
+            .catch(() => {});
+
+        // ═══ LEDGER / BALANCE SHEET ═══════════════════════════════════════
+
+        let ledgerLoaded = false;
+        let districtCache = null;
+
+        function loadLedger() {
+            if (ledgerLoaded) return;
+            ledgerLoaded = true;
+            // Populate district dropdown
+            fetch('/api/districts')
+                .then(r => r.json())
+                .then(districts => {
+                    districtCache = districts;
+                    const sel = document.getElementById('ledgerDistrictSelect');
+                    sel.innerHTML = '<option value="">Select a district...</option>';
+                    districts.forEach(d => {
+                        const opt = document.createElement('option');
+                        opt.value = d.id;
+                        opt.textContent = `${d.name} (${d.total_machines} machines, ${d.efficiency.toFixed(0)}% eff)`;
+                        sel.appendChild(opt);
+                    });
+                });
+            // Load custom lassos
+            refreshLassoList();
+        }
+
+        function loadDistrictLedger() {
+            const sel = document.getElementById('ledgerDistrictSelect');
+            const did = sel.value;
+            if (!did) return;
+            fetch('/api/ledger/district/' + did)
+                .then(r => r.json())
+                .then(data => renderLedger(data));
+        }
+
+        function loadLassoLedger(lassoId) {
+            fetch('/api/lassos/' + lassoId + '/ledger')
+                .then(r => r.json())
+                .then(data => renderLedger(data));
+        }
+
+        function renderLedger(data) {
+            const body = document.getElementById('ledgerBody');
+            const summary = document.getElementById('ledgerSummaryBody');
+            const countBadge = document.getElementById('ledgerItemCount');
+
+            if (!data.items || data.items.length === 0) {
+                body.innerHTML = '<div style="color:#484f58;text-align:center;padding:24px;">No item flows in this group</div>';
+                return;
+            }
+
+            countBadge.textContent = data.items.length + ' items';
+
+            // Build ledger table
+            let html = `<table class="ledger-table">
+                <thead><tr>
+                    <th>Item</th>
+                    <th class="num">Produced</th>
+                    <th class="num">Consumed</th>
+                    <th class="num">Net</th>
+                    <th class="num">Ext In</th>
+                    <th class="num">Ext Out</th>
+                    <th>Status</th>
+                </tr></thead><tbody>`;
+
+            for (const item of data.items) {
+                const netColor = item.net > 0 ? '#d29922' : item.net < 0 ? '#f85149' : '#3fb950';
+                html += `<tr>
+                    <td style="color:#c9d1d9;font-weight:500;">${item.item}</td>
+                    <td class="num" style="color:#3fb950;">${item.produced > 0 ? '+' + item.produced : '-'}</td>
+                    <td class="num" style="color:#f85149;">${item.consumed > 0 ? '-' + item.consumed : '-'}</td>
+                    <td class="num" style="color:${netColor};font-weight:600;">${item.net > 0 ? '+' : ''}${item.net}</td>
+                    <td class="num" style="color:#58a6ff;">${item.ext_in > 0 ? item.ext_in : '-'}</td>
+                    <td class="num" style="color:#a371f7;">${item.ext_out > 0 ? item.ext_out : '-'}</td>
+                    <td><span class="ledger-status ${item.status}">${item.status}</span></td>
+                </tr>`;
+            }
+            html += '</tbody></table>';
+            body.innerHTML = html;
+
+            // Summary panel
+            const t = data.totals || {};
+            let shtml = '<div class="fb-stat-grid">';
+            shtml += buildStatCard(t.machines || 0, 'Machines', '#FFD700');
+            shtml += buildStatCard(t.producing || 0, 'Producing', '#3fb950');
+            shtml += buildStatCard(t.items_produced || 0, 'Items Made', '#58a6ff');
+            shtml += buildStatCard(t.items_consumed || 0, 'Items Used', '#f85149');
+            shtml += '</div>';
+
+            // Boundary flows
+            shtml += `<div style="margin-top:12px;">
+                <div style="font-size:11px;color:#8b949e;font-weight:600;margin-bottom:6px;">Boundary Flows</div>
+                <div style="display:flex;gap:16px;font-size:12px;">
+                    <div><span style="color:#58a6ff;">${t.boundary_in_count || 0}</span> edges in <span style="color:#484f58;">(${t.total_ext_in_rate || 0}/min)</span></div>
+                    <div><span style="color:#a371f7;">${t.boundary_out_count || 0}</span> edges out <span style="color:#484f58;">(${t.total_ext_out_rate || 0}/min)</span></div>
+                </div>
+            </div>`;
+
+            // Bottleneck
+            if (data.bottleneck) {
+                const bn = data.bottleneck;
+                const utilPct = (bn.util * 100).toFixed(0);
+                const bnColor = bn.util > 0.95 ? '#f85149' : bn.util > 0.7 ? '#d29922' : '#3fb950';
+                shtml += `<div style="margin-top:12px;padding:8px;background:#0d1117;border:1px solid #30363d;border-radius:4px;">
+                    <div style="font-size:11px;color:#8b949e;font-weight:600;margin-bottom:4px;">Tightest Boundary ${bn.is_pipe ? 'Pipe' : 'Belt'}</div>
+                    <div style="font-size:12px;color:${bnColor};">${bn.flow_rate}/${bn.max_rate} /min (${utilPct}% used)</div>
+                </div>`;
+            }
+
+            // Deficit highlights
+            const deficits = data.items.filter(i => i.status === 'deficit');
+            if (deficits.length > 0) {
+                shtml += '<div style="margin-top:12px;">';
+                shtml += '<div style="font-size:11px;color:#f85149;font-weight:600;margin-bottom:6px;">Deficits</div>';
+                for (const d of deficits) {
+                    shtml += `<div style="display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;">
+                        <span style="flex:1;color:#c9d1d9;">${d.item}</span>
+                        <span style="color:#f85149;font-weight:600;">${d.net}/min</span>
+                    </div>`;
+                }
+                shtml += '</div>';
+            }
+
+            summary.innerHTML = shtml;
+        }
+
+        // ═══ LASSO DRAWING MODE ═══════════════════════════════════════════
+
+        let lassoMode = false;
+        let lassoPoints = [];  // polygon points in world coords
+
+        function toggleLassoMode() {
+            lassoMode = !lassoMode;
+            const btn = document.getElementById('lassoToggleBtn');
+            const status = document.getElementById('lassoStatus');
+            const saveBtn = document.getElementById('lassoSaveBtn');
+            const cancelBtn = document.getElementById('lassoCancelBtn');
+            const nameInput = document.getElementById('lassoNameInput');
+
+            if (lassoMode) {
+                btn.classList.add('active');
+                status.textContent = 'Click points on the map to draw a polygon. Right-click or press Esc to finish.';
+                status.style.color = '#a371f7';
+                cancelBtn.style.display = '';
+                nameInput.style.display = '';
+                lassoPoints = [];
+                const canvas = document.getElementById('mapCanvas');
+                if (canvas) canvas.style.cursor = 'crosshair';
+            } else {
+                btn.classList.remove('active');
+                status.textContent = 'Click to enable lasso drawing mode';
+                status.style.color = '#8b949e';
+                saveBtn.style.display = 'none';
+                cancelBtn.style.display = 'none';
+                nameInput.style.display = 'none';
+                lassoPoints = [];
+                const canvas = document.getElementById('mapCanvas');
+                if (canvas) canvas.style.cursor = 'grab';
+                drawMap();
+            }
+        }
+
+        function cancelLasso() {
+            lassoMode = false;
+            toggleLassoMode(); // reset everything
+            toggleLassoMode(); // turn off (it was toggled on by the first call)
+            lassoMode = false;
+            document.getElementById('lassoToggleBtn').classList.remove('active');
+            document.getElementById('lassoStatus').textContent = 'Click to enable lasso drawing mode';
+            document.getElementById('lassoStatus').style.color = '#8b949e';
+            document.getElementById('lassoSaveBtn').style.display = 'none';
+            document.getElementById('lassoCancelBtn').style.display = 'none';
+            document.getElementById('lassoNameInput').style.display = 'none';
+            lassoPoints = [];
+            const canvas = document.getElementById('mapCanvas');
+            if (canvas) canvas.style.cursor = 'grab';
+            drawMap();
+        }
+
+        function screenToWorld(sx, sy) {
+            const canvas = document.getElementById('mapCanvas');
+            return {
+                x: cam.x + (sx - canvas.width / 2) / cam.zoom,
+                y: cam.y + (sy - canvas.height / 2) / cam.zoom
+            };
+        }
+
+        function pointInPolygon(px, py, polygon) {
+            let inside = false;
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const xi = polygon[i][0], yi = polygon[i][1];
+                const xj = polygon[j][0], yj = polygon[j][1];
+                if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+                    inside = !inside;
+                }
+            }
+            return inside;
+        }
+
+        function saveLasso() {
+            if (lassoPoints.length < 3 || !mapData) return;
+
+            const polygon = lassoPoints.map(p => [p.x, p.y]);
+            // Find buildings inside polygon
+            const insideIds = [];
+            for (const b of mapData.buildings) {
+                if (pointInPolygon(b.x, b.y, polygon)) {
+                    insideIds.push(b.id);
+                }
+            }
+
+            if (insideIds.length === 0) {
+                document.getElementById('lassoStatus').textContent = 'No buildings inside polygon. Try again.';
+                document.getElementById('lassoStatus').style.color = '#f85149';
+                return;
+            }
+
+            const name = document.getElementById('lassoNameInput').value || ('Custom Lasso');
+
+            fetch('/api/lassos', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name: name, polygon: polygon, node_ids: insideIds}),
+            })
+            .then(r => r.json())
+            .then(lasso => {
+                cancelLasso();
+                refreshLassoList();
+                // Auto-load its ledger
+                loadLassoLedger(lasso.id);
+                // Switch to ledger tab
+                const ledgerBtn = document.querySelector('.tab-btn:last-child');
+                if (ledgerBtn) {
+                    switchTab('ledger', ledgerBtn);
+                    loadLedger();
+                }
+            });
+        }
+
+        function refreshLassoList() {
+            fetch('/api/lassos')
+                .then(r => r.json())
+                .then(lassos => {
+                    const body = document.getElementById('lassoListBody');
+                    const badge = document.getElementById('lassoCount');
+                    if (badge) badge.textContent = lassos.length;
+
+                    if (lassos.length === 0) {
+                        body.innerHTML = '<div style="color:#484f58;text-align:center;padding:16px;font-size:12px;">Use the Lasso tool on the Factory Map to create custom groups.</div>';
+                        return;
+                    }
+
+                    body.innerHTML = lassos.map(l => `
+                        <div style="display:flex;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px solid #1c2128;font-size:12px;">
+                            <span style="flex:1;color:#c9d1d9;font-weight:500;">${l.name}</span>
+                            <span style="color:#8b949e;">${l.node_ids.length} buildings</span>
+                            <button class="filter-btn" onclick="loadLassoLedger(${l.id})" style="color:#a371f7;">Ledger</button>
+                            <button class="filter-btn" onclick="deleteLasso(${l.id})" style="color:#f85149;">X</button>
+                        </div>
+                    `).join('');
+                });
+        }
+
+        function deleteLasso(lassoId) {
+            fetch('/api/lassos/' + lassoId, {method: 'DELETE'})
+                .then(() => refreshLassoList());
+        }
+
+        // ═══ SUB-GRAPH EXPORT ═════════════════════════════════════════════
+
+        function exportSubgraph(buildingId, ticketId) {
+            if (!buildingId) return;
+
+            // First trace to get the involved nodes
+            fetch('/api/traceback/' + encodeURIComponent(buildingId))
+                .then(r => r.json())
+                .then(traceResult => {
+                    const nodeIds = traceResult.node_ids || [];
+                    if (nodeIds.length === 0) {
+                        alert('No nodes found in trace');
+                        return;
+                    }
+
+                    const reason = prompt('Reason for reporting this sub-graph (optional):') || '';
+
+                    return fetch('/api/export/subgraph', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            node_ids: nodeIds,
+                            ticket_id: ticketId || null,
+                            reason: reason,
+                        }),
+                    });
+                })
+                .then(r => r ? r.json() : null)
+                .then(data => {
+                    if (!data) return;
+                    // Download as JSON file
+                    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `subgraph_report_${ticketId || 'manual'}_${Date.now()}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+        }
+    </script>
+</body>
+
+</html>
