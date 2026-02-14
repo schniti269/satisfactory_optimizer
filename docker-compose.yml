@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  satisfactory-optimizer:
+    build: .
+    container_name: satisfactory-optimizer
+    ports:
+      - "5000:5000"
+    volumes:
+      # Mount directory to watch for .sav files
+      - ./watch:/app/watch:ro
+      # Persist database
+      - ./data:/app/webapp
+    environment:
+      - FLASK_ENV=production
+      - WATCH_DIR=/app/watch
+    restart: unless-stopped

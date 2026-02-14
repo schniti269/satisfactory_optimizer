@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Generated files
+satisfactory_final*
+satisfactory_flowchart.dot
+satisfactory_flowchart.pdf
+satisfactory_flowchart.png
+satisfactory_flowchart.svg
+satisfactory_flowchart
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Temp files
+*.tmp
+*.bak
+*.log
+
+# Uploads
+uploads/
+temp/
+tmp/
+
+# Environment
+.env
+.env.local
+
+# Project specific
+KI_und_EAM_Praesentation.pptx
+*.pptx

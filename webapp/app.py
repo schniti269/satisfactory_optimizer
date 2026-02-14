@@ -1,10 +1,13 @@
 """
 Satisfactory Factory Janitor — Web Dashboard
 Upload a .sav file and get a full factory analysis with issue detection.
+Supports automatic file watching for mounted .sav files.
 """
 
 import os
 import tempfile
+import threading
+from pathlib import Path
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from save_parser import parse_save
 from graph_analyzer import analyze_supply_chain, load_recipe_db, build_flow_graph, propagate_flow
@@ -13,6 +16,13 @@ from feedback_db import (add_feedback, get_feedback, get_feedback_stats,
                          create_tickets_from_issues, auto_resolve_tickets,
                          get_tickets, update_ticket, get_ticket_stats)
 from district_analyzer import detect_districts, compute_manifold_blocks, compute_ledger
+
+try:
+    from watchdog.observers import Observer
+    from watchdog.events import FileSystemEventHandler
+    WATCHDOG_AVAILABLE = True
+except ImportError:
+    WATCHDOG_AVAILABLE = False
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 200 * 1024 * 1024  # 200MB max upload
@@ -29,6 +39,81 @@ _manifold_blocks = None
 _node_to_block = None
 _custom_lassos = []  # user-defined polygon groups [{id, name, node_ids, polygon}]
 _next_lasso_id = 1
+
+# File watcher
+_processed_files = set()
+
+
+class SaveFileWatcher(FileSystemEventHandler):
+    """Watch for new .sav files and auto-load them."""
+
+    def on_created(self, event):
+        if event.is_directory:
+            return
+        if event.src_path.endswith('.sav') and event.src_path not in _processed_files:
+            self._process_file(event.src_path)
+
+    def _process_file(self, file_path):
+        """Process a newly detected .sav file."""
+        global _current_factory, _current_issues, _graph_stats, _flow_nodes, _flow_edges
+        global _districts, _node_to_district, _manifold_blocks, _node_to_block, _processed_files
+
+        try:
+            print(f"[Watcher] Detected new save file: {file_path}")
+            _processed_files.add(file_path)
+
+            # Parse the save file
+            factory = parse_save(file_path)
+            issues, graph_stats = analyze_supply_chain(factory)
+            _current_factory = factory
+            _current_issues = issues
+            _graph_stats = graph_stats
+
+            # Build flow graph for traceback queries
+            recipe_db, by_norm = load_recipe_db()
+            _flow_nodes, _flow_edges, _ = build_flow_graph(factory, recipe_db, by_norm)
+            propagate_flow(_flow_nodes, _flow_edges)
+
+            # District detection + manifold compression
+            _districts, _node_to_district = detect_districts(
+                _flow_nodes, _flow_edges, factory, issues)
+            _manifold_blocks, _node_to_block = compute_manifold_blocks(
+                _flow_nodes, _flow_edges)
+
+            # Ticket workflow
+            session_name = factory.session_name if hasattr(factory, 'session_name') else None
+            auto_resolve_tickets(issues, session_name)
+            create_tickets_from_issues(issues, session_name)
+
+            print(f"[Watcher] Successfully loaded: {len(issues)} issues found")
+            if graph_stats:
+                print(f"[Watcher] Graph: {graph_stats['total_nodes']} nodes, {graph_stats['total_edges']} edges")
+            print(f"[Watcher] Districts: {len(_districts)}, Manifold blocks: {len(_manifold_blocks)}")
+        except Exception as e:
+            print(f"[Watcher] Error processing {file_path}: {e}")
+            import traceback
+            traceback.print_exc()
+
+
+def start_file_watcher(watch_dir=None):
+    """Start watching for new .sav files in the watch directory."""
+    if not WATCHDOG_AVAILABLE:
+        print("[Watcher] watchdog not installed, file watching disabled")
+        return None
+
+    if watch_dir is None:
+        watch_dir = os.getenv('WATCH_DIR', './watch')
+
+    watch_dir = Path(watch_dir)
+    if not watch_dir.exists():
+        watch_dir.mkdir(parents=True, exist_ok=True)
+        print(f"[Watcher] Created watch directory: {watch_dir}")
+
+    observer = Observer()
+    observer.schedule(SaveFileWatcher(), str(watch_dir), recursive=False)
+    observer.start()
+    print(f"[Watcher] Started monitoring: {watch_dir}")
+    return observer
 
 
 @app.route("/")
@@ -750,4 +835,12 @@ if __name__ == "__main__":
         print(f"Districts: {len(_districts)}, Manifold blocks: {len(_manifold_blocks)}")
         print(f"Tickets: {ticket_result['created']} created, {ticket_result['updated']} updated")
 
-    app.run(debug=True, port=5000)
+    # Start file watcher in background
+    observer = start_file_watcher()
+
+    try:
+        app.run(debug=False, port=5000, use_reloader=False)
+    finally:
+        if observer:
+            observer.stop()
+            observer.join()
